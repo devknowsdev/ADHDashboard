@@ -145,13 +145,8 @@ globalThis so Node VM harnesses can access them.
   // Expose any extra names discovered in templates/tests that are reasonably safe noop aliases
   ['openFocusPicker','closeFocusPicker','openSessions','closeSessions','saveSessionEdit','cancelSessionEdit','deleteSession'].forEach(n=>{ if(typeof globalThis[n]==='undefined') globalThis[n]=root[n]; });
 
-  // Provide safe no-op implementations for many inline handlers that may
-  // be referenced by templates but are not required for headless tests.
-  const noopNames = [
-    'setMetroBpm','stopMetro','startMetro','tapTempo','setMetroBeats','setMetroSubdivision','toggleTuner','setKbWaveform','setKbVolume',
-    'dumpAiParse','dumpAiConfirm','dumpAiEdit','settingsTestOllama','settingsTestAnthropic','settingsToggleShowKey',
-    'toggleWidgetCollapse','hideWidget','restoreWidget','plannerNudgeZoom','plannerSetZoom'
-  ];
+  // No-op aliases removed — prefer real implementations where available.
+  const noopNames = [];
   noopNames.forEach(name=>{
     try{ if(typeof root[name]==='undefined') root[name]=function(){ try{ if(typeof render==='function') render(); }catch(e){} }; if(typeof globalThis!== 'undefined' && typeof globalThis[name]==='undefined') globalThis[name]=root[name]; }catch(e){}
   });
