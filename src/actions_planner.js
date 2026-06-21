@@ -9,14 +9,14 @@ STATE_WRITES: TL_END_HOUR, TL_LABEL_W, TL_MIN_DUR, TL_PX_PER_MIN, TL_SNAP, TL_ST
 PUBLIC_API: _tlClamp, _tlEventToMins, _tlMinsToHHMM, _tlMinsToX, _tlMinsToY, _tlSnap, _tlXToMins, _tlYToMins, plannerAddDump, plannerDeleteDump, plannerGoToMonth, plannerGoToWeek
 DEPENDENCIES: see dependency graph
 INVARIANTS: render pure; actions mutate; helpers transform
-LAST_STABILIZED: 2026-06-21
+LAST_STABILIZED: 2026-06-22
 */
 
 // Planner widget actions — timeline navigation, drag-to-create/move/resize/copy,
 // task jump-highlight, and date helpers.
 // Depends on: state.js, storage.js (save), ui.js (showToast), render.js (render),
 //             helpers.js (normalizeTaskTime, nextTaskOrder, dateToYMD, ymdToDate,
-//             todayYMD), actions_tasktimer.js.
+//             todayYMD, _blurForRender), actions_tasktimer.js.
 
 // dateToYMD, ymdToDate, todayYMD moved to helpers.js (HANDOFF_task_scope_and_dump.md)
 // — general-purpose date utilities, not planner-specific; helpers.js loads first
@@ -122,6 +122,10 @@ function plannerAddDump(ymd){
   if(!plannerDayDumps[ymd]) plannerDayDumps[ymd]=[];
   plannerDayDumps[ymd].unshift({id:Date.now(),text,catId:'',done:false,createdAt:Date.now()});
   plannerDumpInput='';
+  // Fix: render-clobber bug — #planner-dump-input lives in a data-no-clobber
+  // wrapper (_renderPlannerDump) and was still focused when render() ran, so
+  // the captured item never painted until something else forced a full render.
+  _blurForRender('planner-dump-input');
   save();render();
   setTimeout(()=>{const el=document.getElementById('planner-dump-input');if(el)el.focus();},0);
 }
