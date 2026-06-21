@@ -33,6 +33,8 @@ Smoke check performed (local)
 - Started a simple static server: `python3 -m http.server 8000` and verified `http://localhost:8000/` returned the app HTML (HTTP 200).
 - Verified all referenced script files from `index.html` exist under `src/`.
 
+- Playwright smoke: ran `tools/playwright_smoke.js` against `http://localhost:8000` (headless Chromium) — result: PASS (no console errors, `#root` present).
+
 If you want a deeper automated smoke test I can install Playwright and run a headless browser script, but that will add dependencies.
  - Pull request: https://github.com/devknowsdev/ADHDashboard/pull/1 (branch `shim-fixes` -> `main`).
 - Consider refactoring `global_api_shim.js` to import helper functions where available instead of duplicating logic, once the VM harness is stabilized.
