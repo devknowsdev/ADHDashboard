@@ -29,6 +29,7 @@ Notes & next steps
 - Manual browser smoke tests: open the SPA and verify timers, quick-log modal, and session modal UX flows still behave as expected in the real browser.
 
 - Committed changes: recent commits include the shim additions and this handover file.
+ - Pull request: https://github.com/devknowsdev/ADHDashboard/pull/1 (branch `shim-fixes` -> `main`).
 - Consider refactoring `global_api_shim.js` to import helper functions where available instead of duplicating logic, once the VM harness is stabilized.
 - If you want, I can also push this branch to remote and open a PR with the changes.
 
