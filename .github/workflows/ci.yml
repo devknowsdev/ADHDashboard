@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master", "shim-fixes" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefer-offline --no-audit || npm install
+
+      - name: Install Playwright browser (Chromium)
+        run: npx playwright install chromium
+
+      - name: Run workflow unit tests
+        run: node src/test_workflows.js
+
+      - name: Run Playwright smoke
+        run: node tools/playwright_smoke.js
