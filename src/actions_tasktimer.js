@@ -1,4 +1,3 @@
-
 // -----------------------------
 // UI LAYER: TIMELINE + HEATMAP + DRAG BRIDGE
 // -----------------------------
@@ -67,6 +66,57 @@ function computeWeeklyHeatmap(list){
   return heat;
 }
 
+// -----------------------------
+// DAY PREVIEW (HOVER LAYER)
+// -----------------------------
+
+function getDayTasks(day){
+  return tasks.filter(t => (t.ts||'').startsWith(day));
+}
+
+function ensureDayPreview(){
+  let el=document.getElementById('day-preview');
+  if(!el){
+    el=document.createElement('div');
+    el.id='day-preview';
+    el.style.position='fixed';
+    el.style.zIndex=9999;
+    el.style.background='#111';
+    el.style.color='#fff';
+    el.style.padding='8px';
+    el.style.borderRadius='8px';
+    el.style.fontSize='12px';
+    el.style.maxWidth='220px';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function renderDayPreview(day,x,y){
+  const el=ensureDayPreview();
+  const items=getDayTasks(day);
+
+  let html=`<strong>${day}</strong><br/>`;
+
+  if(!items.length){
+    html+='No tasks';
+  } else {
+    items.slice(0,6).forEach(t=>{
+      html+=`<div>${t.ts||'--'} ${t.text}</div>`;
+    });
+  }
+
+  el.innerHTML=html;
+  el.style.left=(x+10)+'px';
+  el.style.top=(y+10)+'px';
+  el.style.display='block';
+}
+
+function hideDayPreview(){
+  const el=document.getElementById('day-preview');
+  if(el) el.style.display='none';
+}
+
 function renderWeeklyHeatmap(containerId){
   const el = document.getElementById(containerId);
   if(!el) return;
@@ -89,6 +139,26 @@ function renderWeeklyHeatmap(containerId){
   html += '</div>';
 
   el.innerHTML = html;
+
+  // hover binding
+  const cells=el.querySelectorAll('.heat-cell');
+  cells.forEach(c=>{
+    const day=c.getAttribute('data-day');
+
+    c.addEventListener('mouseenter',(e)=>{
+      renderDayPreview(day,e.clientX,e.clientY);
+    });
+
+    c.addEventListener('mousemove',(e)=>{
+      const preview=document.getElementById('day-preview');
+      if(preview){
+        preview.style.left=(e.clientX+10)+'px';
+        preview.style.top=(e.clientY+10)+'px';
+      }
+    });
+
+    c.addEventListener('mouseleave',hideDayPreview);
+  });
 }
 
 // -----------------------------
@@ -115,7 +185,6 @@ function enableTimelineDrag(root){
     const t = tasks.find(x => x.id == id);
     if(!t) return;
 
-    // naive drop: reposition based on Y coordinate
     const rect = root.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height;
     const mins = Math.floor(y * 1440);
@@ -136,5 +205,7 @@ window.__calendarUI = {
   renderTimeline,
   computeWeeklyHeatmap,
   renderWeeklyHeatmap,
-  enableTimelineDrag
+  enableTimelineDrag,
+  renderDayPreview,
+  getDayTasks
 };
