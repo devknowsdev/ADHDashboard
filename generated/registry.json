@@ -1,0 +1,184 @@
+{
+  "modules": [
+    {
+      "file": "src/actions.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_alarms_habits.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_export.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_planner.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_tasks.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_tasktimer.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/actions_wizard.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/audio.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/constants.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/core.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/helpers.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/init.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/music.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_checkin.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_daylog.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_focus.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_focus_timer.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_focusboard_cards.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_habits.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_journal.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_modals.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_music.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_planner.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_tasks.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/render_wizard.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/runtime.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/state/data.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/state/index.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/state/runtimeState.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/state/uiState.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/state.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/storage.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/test_workflows.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/ui.js",
+      "module": null,
+      "layer": null
+    },
+    {
+      "file": "src/widget_registry.js",
+      "module": null,
+      "layer": null
+    }
+  ]
+}

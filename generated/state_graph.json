@@ -1,0 +1,146 @@
+{
+  "src/audio.js": {
+    "reads": "none",
+    "writes": "AUDIO_DB_NAME, AUDIO_STORE, audioRecState, audioRecordings, audioStream, blob, codecs, currentAudioEl, d, db"
+  },
+  "src/actions_tasktimer.js": {
+    "reads": "T, darkMode, state, tasks",
+    "writes": "T, activeSession, ctx, darkMode, done, doneDate, doneText, editingSessionId, editingSessionMmSs, editingSessionSecs"
+  },
+  "src/actions_planner.js": {
+    "reads": "state, tasks",
+    "writes": "TL_END_HOUR, TL_LABEL_W, TL_MIN_DUR, TL_PX_PER_MIN, TL_SNAP, TL_START_HOUR, TL_TOTAL_PX, arr, clickMins, curEndMins"
+  },
+  "src/render_planner.js": {
+    "reads": "T, state, tasks",
+    "writes": "Click, DAYS_FULL, DAY_LABELS, DAY_SHORT, MAX_SHOW, MONTHS_FULL, MONTH_NAMES, MONTH_SHORT, active, anchor"
+  },
+  "src/render_tasks.js": {
+    "reads": "T, state, tasks",
+    "writes": "_liveExtra, _savedTracked, a, aScore, addSubtaskHtml, addingSubtaskForTaskId, background, borderColor, bpm, bpmHtml"
+  },
+  "src/core.js": {
+    "reads": "T",
+    "writes": "background, borderColor, boxShadow, c, cardTransition, class, collapsed, crisisMode, cutoff, dailyIntentions"
+  },
+  "src/constants.js": {
+    "reads": "tasks",
+    "writes": "COLOR_OPTS, DARK, DAYS, HABIT_ANCHORS, INTENTION_QUESTIONS, LIGHT, MONTHS, defaultCats"
+  },
+  "src/render_wizard.js": {
+    "reads": "T, state, tasks",
+    "writes": "addedTaskIds, b, body, c, captured, capturedRows, chipHtml, chipTasks, chips, class"
+  },
+  "src/render_focusboard_cards.js": {
+    "reads": "T, state, tasks",
+    "writes": "NOTE_TRUNC, PILL_SHOW, _live, _saved, a, activeTasks, allEntries, allTargets, available, background"
+  },
+  "src/ui.js": {
+    "reads": "T",
+    "writes": "background, display, el, t, textContent, toastTimer, type"
+  },
+  "src/render.js": {
+    "reads": "T, darkMode, tasks",
+    "writes": "_renderTimer, _scrollY, activeElement, ae, barLabel, boardTimer, body, c1, circ, class"
+  },
+  "src/render_music.js": {
+    "reads": "T, state",
+    "writes": "A4, BLACKS, WHITES, a, anchor, b, beatDots, beatOpts, black, blackHtml"
+  },
+  "src/actions_tasks.js": {
+    "reads": "T, habits, state, tasks",
+    "writes": "_ST_QL_PILLS, active, added, addingSubtaskForTaskId, already, background, boardCardNoteEditId, border, bpm, btn"
+  },
+  "src/render_checkin.js": {
+    "reads": "T, state",
+    "writes": "class, clobber, col, cur, currentVal, d, date, dots, ds, e"
+  },
+  "src/runtime.js": {
+    "reads": "T, state, tasks",
+    "writes": "QUICK_MINS, _lastDateStr, a, activeTasks, audioRecState, card, clockColWidth, code, col, ctx"
+  },
+  "src/actions.js": {
+    "reads": "T, state, tasks",
+    "writes": "_IDLE_PILLS, _QL_PILLS, a, active, b, background, border, btn, cancel, colonMatch"
+  },
+  "src/widget_registry.js": {
+    "reads": "state",
+    "writes": "_widgetRegistry, id, w"
+  },
+  "src/init.js": {
+    "reads": "habits, tasks",
+    "writes": "habits, protocol, tasks"
+  },
+  "src/test_workflows.js": {
+    "reads": "T, darkMode, habits, state, tasks",
+    "writes": "Blob, FILES, June, MediaRecorder, T, TODAY, URL, _bad, _data, _isInvalid"
+  },
+  "src/storage.js": {
+    "reads": "T, darkMode, habits, tasks",
+    "writes": "ID_MIGRATE, T, _saveTimer, alarms, allDefs, answers, audioRecordings, c, categories, clockColWidth"
+  },
+  "src/render_focus_timer.js": {
+    "reads": "T, state",
+    "writes": "SIZE, active, anchor, background, barClockHtml, barLayoutHtml, barRows, baseline, c1, c2"
+  },
+  "src/render_habits.js": {
+    "reads": "T, habits, tasks",
+    "writes": "DAY_LABELS, a, anchor, anchored, c, cat, catOpts, class, clobber, count"
+  },
+  "src/state.js": {
+    "reads": "DATA, T, darkMode, habits, state, tasks",
+    "writes": "T, activeSession, addingSubtaskForTaskId, alarms, audioRecState, audioRecordings, audioStream, boardCardNoteEditId, boardSubExpandedTaskIds, categories"
+  },
+  "src/actions_wizard.js": {
+    "reads": "state, tasks",
+    "writes": "action, blocks, c, created, cursor, date, dayWizardOpen, done, doneDate, el"
+  },
+  "src/render_journal.js": {
+    "reads": "T, state",
+    "writes": "audioRecState, c, capturePlaceholder, cat, catOpts, catPill, class, clobber, contentHtml, cutoff"
+  },
+  "src/render_daylog.js": {
+    "reads": "T, habits, state",
+    "writes": "DAY_LABELS, accept, allEntries, breakMins, breakSessions, breakTodaySecs, byCat, byTask, cat, catBreakdown"
+  },
+  "src/render_focus.js": {
+    "reads": "T, state, tasks",
+    "writes": "active, activeTasks, allEntries, ans, boardHtml, boardSection, boardTasks, cards, class, clobber"
+  },
+  "src/actions_alarms_habits.js": {
+    "reads": "habits, state",
+    "writes": "a, alarms, anchor, anchorOrder, anchorSel, anchorVal, catSel, d, editingHabitHitId, el"
+  },
+  "src/helpers.js": {
+    "reads": "T, habits, tasks",
+    "writes": "COLORS, DURATION, GRAVITY, _avoidanceCache, _taskHitsCache, alpha, already, alreadyMigrated, anchor, anchorOrder"
+  },
+  "src/actions_export.js": {
+    "reads": "habits, state, tasks",
+    "writes": "a, alarms, allH, ans, blob, byCat, c, cat, catId, categories"
+  },
+  "src/render_modals.js": {
+    "reads": "T, state, tasks",
+    "writes": "PILLS, activeTasks, actualMins, autocomplete, c, cat, catId, catRows, class, clobber"
+  },
+  "src/music.js": {
+    "reads": "state",
+    "writes": "KB_NOTE_FREQS, MAX_SAMPLES, NOTE_NAMES, SIZE, _tapTimes, a, angle, arcEl, avg, b"
+  },
+  "src/state/runtimeState.js": {
+    "reads": "state",
+    "writes": "activeSession, audioRecState, audioStream, currentAudioEl, dragSourceId, dragSourceWidgetId, dragSubtaskSourceId, energyPending, kbActiveNotes, kbAudioCtx"
+  },
+  "src/state/uiState.js": {
+    "reads": "T, darkMode, state, tasks",
+    "writes": "T, addingSubtaskForTaskId, boardCardNoteEditId, boardSubExpandedTaskIds, clockColWidth, crisisMode, darkMode, dayStartHour, editingAudioLabelId, editingCatId"
+  },
+  "src/state/index.js": {
+    "reads": "DATA, STATE, T, darkMode, habits, state, tasks",
+    "writes": "none"
+  },
+  "src/state/data.js": {
+    "reads": "habits, state, tasks",
+    "writes": "alarms, audioRecordings, categories, dailyIntentions, energyLog, focusBoardManualIds, focusSubtaskId, focusTaskId, habits, journalEntries"
+  }
+}

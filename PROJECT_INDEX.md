@@ -1,0 +1,41 @@
+# ADHDashboard Project Index
+
+Generated from source modules.
+
+- src/audio.js
+- src/actions_tasktimer.js
+- src/actions_planner.js
+- src/render_planner.js
+- src/render_tasks.js
+- src/core.js
+- src/constants.js
+- src/render_wizard.js
+- src/render_focusboard_cards.js
+- src/\.js
+- src/ui.js
+- src/render.js
+- src/render_music.js
+- src/actions_tasks.js
+- src/render_checkin.js
+- src/runtime.js
+- src/actions.js
+- src/widget_registry.js
+- src/init.js
+- src/test_workflows.js
+- src/storage.js
+- src/render_focus_timer.js
+- src/render_habits.js
+- src/state.js
+- src/actions_wizard.js
+- src/render_journal.js
+- src/render_daylog.js
+- src/render_focus.js
+- src/actions_alarms_habits.js
+- src/helpers.js
+- src/actions_export.js
+- src/render_modals.js
+- src/music.js
+- src/state/runtimeState.js
+- src/state/uiState.js
+- src/state/index.js
+- src/state/data.js

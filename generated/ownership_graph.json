@@ -1,0 +1,152 @@
+{
+  "owners": [
+    {
+      "module": "src/audio.js",
+      "owner": "src/audio.js"
+    },
+    {
+      "module": "src/actions_tasktimer.js",
+      "owner": "src/actions_tasktimer.js"
+    },
+    {
+      "module": "src/actions_planner.js",
+      "owner": "src/actions_planner.js"
+    },
+    {
+      "module": "src/render_planner.js",
+      "owner": "src/render_planner.js"
+    },
+    {
+      "module": "src/render_tasks.js",
+      "owner": "src/render_tasks.js"
+    },
+    {
+      "module": "src/core.js",
+      "owner": "src/core.js"
+    },
+    {
+      "module": "src/constants.js",
+      "owner": "src/constants.js"
+    },
+    {
+      "module": "src/render_wizard.js",
+      "owner": "src/render_wizard.js"
+    },
+    {
+      "module": "src/render_focusboard_cards.js",
+      "owner": "src/render_focusboard_cards.js"
+    },
+    {
+      "module": "src/\\.js",
+      "owner": "src/\\.js"
+    },
+    {
+      "module": "src/ui.js",
+      "owner": "src/ui.js"
+    },
+    {
+      "module": "src/render.js",
+      "owner": "src/render.js"
+    },
+    {
+      "module": "src/render_music.js",
+      "owner": "src/render_music.js"
+    },
+    {
+      "module": "src/actions_tasks.js",
+      "owner": "src/actions_tasks.js"
+    },
+    {
+      "module": "src/render_checkin.js",
+      "owner": "src/render_checkin.js"
+    },
+    {
+      "module": "src/runtime.js",
+      "owner": "src/runtime.js"
+    },
+    {
+      "module": "src/actions.js",
+      "owner": "src/actions.js"
+    },
+    {
+      "module": "src/widget_registry.js",
+      "owner": "src/widget_registry.js"
+    },
+    {
+      "module": "src/init.js",
+      "owner": "src/init.js"
+    },
+    {
+      "module": "src/test_workflows.js",
+      "owner": "src/test_workflows.js"
+    },
+    {
+      "module": "src/storage.js",
+      "owner": "src/storage.js"
+    },
+    {
+      "module": "src/render_focus_timer.js",
+      "owner": "src/render_focus_timer.js"
+    },
+    {
+      "module": "src/render_habits.js",
+      "owner": "src/render_habits.js"
+    },
+    {
+      "module": "src/state.js",
+      "owner": "src/state.js"
+    },
+    {
+      "module": "src/actions_wizard.js",
+      "owner": "src/actions_wizard.js"
+    },
+    {
+      "module": "src/render_journal.js",
+      "owner": "src/render_journal.js"
+    },
+    {
+      "module": "src/render_daylog.js",
+      "owner": "src/render_daylog.js"
+    },
+    {
+      "module": "src/render_focus.js",
+      "owner": "src/render_focus.js"
+    },
+    {
+      "module": "src/actions_alarms_habits.js",
+      "owner": "src/actions_alarms_habits.js"
+    },
+    {
+      "module": "src/helpers.js",
+      "owner": "src/helpers.js"
+    },
+    {
+      "module": "src/actions_export.js",
+      "owner": "src/actions_export.js"
+    },
+    {
+      "module": "src/render_modals.js",
+      "owner": "src/render_modals.js"
+    },
+    {
+      "module": "src/music.js",
+      "owner": "src/music.js"
+    },
+    {
+      "module": "src/state/runtimeState.js",
+      "owner": "src/state/runtimeState.js"
+    },
+    {
+      "module": "src/state/uiState.js",
+      "owner": "src/state/uiState.js"
+    },
+    {
+      "module": "src/state/index.js",
+      "owner": "src/state/index.js"
+    },
+    {
+      "module": "src/state/data.js",
+      "owner": "src/state/data.js"
+    }
+  ]
+}

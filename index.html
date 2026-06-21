@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADHDashboard</title>
+    <meta
+      name="description"
+      content="Local-first productivity dashboard designed for ADHD and autism."
+    />
+
+    <!-- Icons used by the dashboard -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+    />
+    <!-- Fonts loaded once here instead of being re-injected on every render() -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap"
+    />
+
+    <style>
+      @keyframes timerPulse {
+        0%, 100% { box-shadow: 0 0 0 0px rgba(99,102,241,0.5); }
+        50% { box-shadow: 0 0 0 5px rgba(99,102,241,0); }
+      }
+
+      @keyframes qlPop {
+        0% { transform: scale(0.88); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      #quick-log-modal {
+        animation: qlPop .15s ease-out both;
+      }
+
+      #ql-digit-display {
+        transition: background .1s;
+      }
+
+      /* Audit fix #8 — keyboard focus rings for accessibility */
+      :focus-visible {
+        outline: 2px solid #1d5fa8;
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+
+      /* Suppress default focus ring in favour of focus-visible */
+      :focus:not(:focus-visible) {
+        outline: none;
+      }
+
+      /* Audit fix #2 — base font weight reduction */
+      body {
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Audit fix #1 — smooth border transitions */
+      button, input, select, textarea {
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      input:focus-visible, select:focus-visible, textarea:focus-visible {
+        outline: 2px solid #1d5fa8;
+        outline-offset: 0;
+        border-color: #1d5fa8 !important;
+      }
+
+
+      /* ── Mobile responsive ─────────────────────────────────────────── */
+
+      /* Minimum touch target size — mobile only, avoids distorting icon buttons on desktop */
+
+      @media (max-width: 640px) {
+        /* Root padding */
+        #root { padding: 8px !important; }
+
+        /* Single-column widget grid */
+        #widget-grid { grid-template-columns: 1fr !important; }
+
+        /* All widget wrappers full width */
+        #widget-grid > div { grid-column: 1 / -1 !important; }
+
+        /* Timer bar: collapse to single column, controls row on top */
+        .timer-bar-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .timer-controls-col {
+          border-right: none !important;
+          border-bottom: 1px solid var(--border-col, #d0e8de);
+          flex-direction: row !important;
+          flex-wrap: wrap !important;
+          padding: 8px !important;
+          min-width: 0 !important;
+          gap: 5px !important;
+        }
+        /* Hide clock ring column and drag handle on mobile — not needed */
+        .timer-clock-col { display: none !important; }
+        .timer-drag-handle { display: none !important; }
+
+        .timer-task-col { padding: 10px 14px !important; }
+
+        /* Board cards: tighter min so two fit per row */
+        .board-card-grid {
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+        }
+
+        /* Category filter tabs: scroll horizontally, no wrap */
+        .cat-tabs {
+          overflow-x: auto !important;
+          flex-wrap: nowrap !important;
+          padding-bottom: 4px;
+          -webkit-overflow-scrolling: touch;
+        }
+        /* Prevent tab buttons from shrinking below label width */
+        .cat-tabs button { flex-shrink: 0; }
+
+        /* Task sort row: wrap onto next line if needed */
+        .task-sort-row { flex-wrap: wrap !important; }
+
+        /* Inputs: 16px prevents iOS auto-zoom on focus */
+        input, select, textarea { font-size: 16px !important; }
+
+        /* Header date: hide on narrow screens to save space */
+        .header-date { display: none !important; }
+
+        /* Touch targets: only enlarge on mobile so desktop icon buttons stay circular */
+        button { min-height: 38px; }
+      }
+    </style>
+  </head>
+  <body style="margin:0">
+    <canvas
+      id="confetti-canvas"
+      style="position:fixed;inset:0;pointer-events:none;z-index:9999;width:100%;height:100%;"
+    ></canvas>
+    <div id="root"></div>
+
+    <!-- Ordered classic scripts preserve the original shared global scope. -->
+    <script src="./src/constants.js"></script>
+    <script src="./src/state.js"></script>
+    <script src="./src/widget_registry.js"></script>
+    <script src="./src/helpers.js"></script>
+    <script src="./src/core.js"></script>
+    <script src="./src/storage.js"></script>
+    <script src="./src/audio.js"></script>
+    <script src="./src/ui.js"></script>
+    <script src="./src/render_focusboard_cards.js"></script>
+    <script src="./src/render_focus_timer.js"></script>
+    <script src="./src/render_focus.js"></script>
+    <script src="./src/render_tasks.js"></script>
+    <script src="./src/render_habits.js"></script>
+    <script src="./src/render_checkin.js"></script>
+    <script src="./src/render_journal.js"></script>
+    <script src="./src/render_daylog.js"></script>
+    <script src="./src/actions_planner.js"></script>
+    <script src="./src/render_planner.js"></script>
+    <script src="./src/actions_wizard.js"></script>
+    <script src="./src/render_wizard.js"></script>
+    <script src="./src/actions.js"></script>
+    <script src="./src/render_modals.js"></script>
+    <script src="./src/render.js"></script>
+    <script src="./src/music.js"></script>
+    <script src="./src/render_music.js"></script>
+    <script src="./src/actions_alarms_habits.js"></script>
+    <script src="./src/actions_tasktimer.js"></script>
+    <script src="./src/actions_tasks.js"></script>
+    <script src="./src/actions_export.js"></script>
+    <script src="./src/runtime.js"></script>
+    <script src="./src/init.js"></script>
+  </body>
+</html>
