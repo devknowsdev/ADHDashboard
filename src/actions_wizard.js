@@ -6,16 +6,16 @@ OWNS: actions_wizard.js responsibilities
 USES: local modules
 STATE_READS: state, tasks
 STATE_WRITES: action, blocks, c, created, cursor, date, dayWizardOpen, done, doneDate, el
-PUBLIC_API: _wizFreeBlocks, _wizUntrackedDay, closeDayWizard, dismissWizardBanner, list, openDayWizard, wizAddCapture, wizAddExistingTask, wizAddReflection, wizAdvanceStep, wizBackStep, wizBulkLogScheduled
+PUBLIC_API: _wizFreeBlocks, _wizUntrackedDay, closeDayWizard, dismissWizardBanner, list, openDayWizard, wizAddCapture, wizAddExistingTask, wizAddReflection, wizAdvanceStep, wizBackStep, wizBulkLogScheduled, wizOpenFromHeader, wizHeaderState
 DEPENDENCIES: see dependency graph
 INVARIANTS: render pure; actions mutate; helpers transform
-LAST_STABILIZED: 2026-06-21
+LAST_STABILIZED: 2026-06-22
 */
 
 // Day Wizard — action layer. State mutations only; rendering lives in render_wizard.js.
 // Depends on: state.js (dayWizardState, dayWizardOpen, wizCaptureInput, wizCaptureList,
 //             dailyIntentions, journalEntries, tasks, timeSessions),
-//             helpers.js (dateToYMD), storage.js (save),
+//             helpers.js (dateToYMD, _blurForRender), storage.js (save),
 //             actions_planner.js (plannerDayDumps, plannerPromoteDump, nextTaskOrder),
 //             actions_tasktimer.js (deleteTask),
 //             core.js (ensureIntentionsToday),
@@ -46,6 +46,54 @@ function openDayWizard(phase){
     _wizFetchDayEndPrompt(todayYmd);
     _wizFetchCarryOverInsight();
   }
+}
+
+// ── wizOpenFromHeader: entry point for the persistent top-bar wizard icon ──────
+// The wizard previously had no way to be reopened once the day-start banner
+// was dismissed or startDone became true — the only path back in was waiting
+// for the day-end banner to become eligible (hour >= dayEndHour), or calling
+// openDayWizard() manually from devtools. This is the single function the
+// header button calls; it decides which phase makes sense right now so the
+// button always does something useful with one click, no matter what state
+// the day is in.
+//
+// Decision order:
+//   1. Day Start not yet done today        → open Start
+//   2. Day Start done, Day End not done,
+//      and it's at/after dayEndHour        → open End (the "natural" case)
+//   3. Day Start done, Day End not done,
+//      but it's BEFORE dayEndHour          → open End anyway — the person is
+//      explicitly asking for it by clicking the icon; don't make them wait
+//      for a clock to agree with them.
+//   4. Both done for today                 → reopen Start in a lightweight
+//      "review" sense (lets them revise today's plan/priority rather than
+//      being locked out once both phases are marked complete).
+function wizOpenFromHeader(){
+  if(!dayWizardState.startDone){
+    openDayWizard('start');
+    return;
+  }
+  if(!dayWizardState.endDone){
+    openDayWizard('end');
+    return;
+  }
+  openDayWizard('start');
+}
+
+// ── wizHeaderState: tells the header button what to show ─────────────────────
+// Returns {label, icon, pending} so render.js can draw an appropriate icon +
+// a small "pending" dot, without render.js needing to know any wizard logic
+// itself (mirrors the pattern _renderTimeTargets() already uses for its
+// upcoming-count badge).
+function wizHeaderState(now){
+  const hour=(now||new Date()).getHours();
+  if(!dayWizardState.startDone){
+    return {label:'Plan your day',icon:'ti-sun',pending:true};
+  }
+  if(!dayWizardState.endDone){
+    return {label:hour>=dayEndHour?'End my day':'Day wizard',icon:'ti-moon',pending:hour>=dayEndHour};
+  }
+  return {label:'Day wizard',icon:'ti-wand',pending:false};
 }
 
 function closeDayWizard(){
@@ -168,6 +216,11 @@ function wizAddCapture(todayYmd){
   plannerDayDumps[todayYmd].unshift(item);
   wizCaptureList.push(item);
   wizCaptureInput='';
+  // Fix: render-clobber bug — #wiz-capture-input lives in a data-no-clobber
+  // wrapper inside the wizard overlay and was still focused when render() ran,
+  // so the captured item never painted in the wizard's own list until the
+  // wizard was closed and reopened (or the page refreshed).
+  _blurForRender('wiz-capture-input');
   save();
   render();
 }
