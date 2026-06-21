@@ -9,7 +9,7 @@ STATE_WRITES: _renderTimer, _scrollY, activeElement, ae, barLabel, boardTimer, b
 PUBLIC_API: _doRender, _partialTimerUpdate, _renderFloatBar, render, renderNow
 DEPENDENCIES: see dependency graph
 INVARIANTS: render pure; actions mutate; helpers transform
-LAST_STABILIZED: 2026-06-21
+LAST_STABILIZED: 2026-06-22
 */
 
 // Lightweight DOM patch for timer tick renders when an input has focus.
@@ -105,6 +105,24 @@ function _renderFloatBar(){
     <div style="height:46px;"></div>`;
 }
 
+// ── Header action buttons — wizard + AI entry points ──────────────────────────
+// Both of these are persistent, always-visible header buttons (unlike the
+// day-wizard banner, which only appears under specific conditions and was the
+// only previous entry point — see actions_wizard.js wizOpenFromHeader()).
+function _renderWizardHeaderBtn(now){
+  const hs=wizHeaderState(now);
+  return `<button onclick="wizOpenFromHeader()" title="${esc(hs.label)}" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;position:relative;')}">
+    <i class="ti ${hs.icon}"></i>
+    ${hs.pending?`<span style="position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:${T.accent};border:1.5px solid ${T.surface};"></span>`:''}
+  </button>`;
+}
+function _renderAiHeaderBtn(){
+  const on=aiSettings.masterEnabled;
+  return `<button onclick="openAiSettings()" title="${on?'AI assistant — enabled':'AI assistant — set up'}" style="${btnStyle(on?'accent2':'default','padding:5px 9px;font-size:14px;border-radius:8px;')}">
+    <i class="ti ti-sparkles"></i>
+  </button>`;
+}
+
 // ── Debounced render — batches rapid consecutive render() calls ───────────────
 let _renderTimer=null;
 function render(){
@@ -194,6 +212,8 @@ function _doRender(){
     <div style="font-size:16px;font-weight:600;color:${T.accent}">focus<span style="color:${T.accent2}">.</span></div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span class="header-date" style="font-size:11px;color:${T.muted};">${dateStr}</span>
+      ${_renderWizardHeaderBtn(now)}
+      ${_renderAiHeaderBtn()}
       <button onclick="openSettings()" title="Settings" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-settings"></i></button>
       <button onclick="enterCrisisMode()" title="Focus mode — hide everything except the timer" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-focus-2"></i></button>
       <button onclick="toggleDark()" title="${darkMode?'Light mode':'Dark mode'}" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-${darkMode?'sun':'moon'}"></i></button>
@@ -226,5 +246,3 @@ function _doRender(){
     if(intentionInput) intentionInput.focus();
   }
 }
-
-
