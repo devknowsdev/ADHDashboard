@@ -148,9 +148,9 @@ globalThis so Node VM harnesses can access them.
   // Provide safe no-op implementations for many inline handlers that may
   // be referenced by templates but are not required for headless tests.
   const noopNames = [
-    'nudgeMetroBpm','setMetroBpm','stopMetro','startMetro','toggleMetro','tapTempo','setMetroBeats','setMetroSubdivision','toggleTuner','setKbOctave','setKbWaveform','setKbVolume',
-    'playRecording','toggleAudioRecording','dumpAiParse','dumpAiConfirm','dumpAiEdit','settingsTestOllama','settingsTestAnthropic','settingsToggleShowKey',
-    'toggleWidgetCollapse','hideWidget','restoreWidget','plannerNudgeZoom','plannerSetZoom','plannerSetDayLayout','plannerSelectDate','tlPillClick','tlClearTaskTime','tlCommitNewTask','tlCancelNewTask','plannerOpenTimeline','plannerOpenDump','plannerPromoteDump'
+    'setMetroBpm','stopMetro','startMetro','tapTempo','setMetroBeats','setMetroSubdivision','toggleTuner','setKbWaveform','setKbVolume',
+    'dumpAiParse','dumpAiConfirm','dumpAiEdit','settingsTestOllama','settingsTestAnthropic','settingsToggleShowKey',
+    'toggleWidgetCollapse','hideWidget','restoreWidget','plannerNudgeZoom','plannerSetZoom'
   ];
   noopNames.forEach(name=>{
     try{ if(typeof root[name]==='undefined') root[name]=function(){ try{ if(typeof render==='function') render(); }catch(e){} }; if(typeof globalThis!== 'undefined' && typeof globalThis[name]==='undefined') globalThis[name]=root[name]; }catch(e){}
