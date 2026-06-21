@@ -159,6 +159,19 @@ globalThis so Node VM harnesses can access them.
   ensure('toggleEnergyFilter', function(){ try{ energyFilterOn = !energyFilterOn; render&&render(); }catch(e){} });
   ensure('toggleTimeTargets', function(){ try{ showTimeTargets = !showTimeTargets; render&&render(); }catch(e){} });
 
+  // Quick capture helper: adds a planner dump for today (or provided date)
+  ensure('quickCapture', function(text, openPlanner){ try{
+    const txt = String(text||'').trim(); if(!txt) return;
+    const ymd = (typeof openPlanner==='string' && openPlanner)?openPlanner:dateToYMD(new Date());
+    if(!plannerDayDumps) plannerDayDumps = {};
+    if(!plannerDayDumps[ymd]) plannerDayDumps[ymd]=[];
+    const item = { id: Date.now(), text: txt, catId:'', done:false, createdAt: Date.now() };
+    plannerDayDumps[ymd].unshift(item);
+    save&&save(); showToast && showToast('Captured','ok');
+    if(openPlanner===true){ plannerOpenDump(ymd); }
+    render&&render();
+  }catch(e){}});
+
   // Task list controls
   ensure('filterTasks', function(f){ try{ taskFilter = f||'all'; render&&render(); }catch(e){} });
   ensure('setTaskSortMode', function(m){ try{ taskSortMode = m||'manual'; render&&render(); }catch(e){} });
