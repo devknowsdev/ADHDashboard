@@ -9,17 +9,9 @@ AI INTEGRATION LAYER (ADDED)
 
   if(!AI_ADAPTER) return;
 
-  // =============================
-  // AI MODE SYSTEM (ADDED)
-  // =============================
-
   window.__AI_MODE__ = window.__AI_MODE__ || {
-    value: "full" // off | assist | full | experimental
+    value: "full"
   };
-
-  // =============================
-  // AI RESOURCE GOVERNOR (NEW)
-  // =============================
 
   window.__AI_GOVERNOR__ = window.__AI_GOVERNOR__ || {
     maxMemoryEntries: 300,
@@ -31,13 +23,8 @@ AI INTEGRATION LAYER (ADDED)
 
   function isAIEnabled(scope){
     const mode = window.__AI_MODE__?.value;
-
     if(mode === "off") return false;
-
-    if(mode === "assist"){
-      return scope === "scheduler" || scope === "checkins";
-    }
-
+    if(mode === "assist") return scope === "scheduler" || scope === "checkins";
     return true;
   }
 
@@ -57,19 +44,9 @@ AI INTEGRATION LAYER (ADDED)
 
     AI_CONTROL?.registerAIAction?.(scope,{type:"executed",provider:result.provider});
 
-    window.__AI_MEMORY__?.add?.({
-      ts:Date.now(),
-      type:"ai_action",
-      scope,
-      data:result
-    });
+    window.__AI_MEMORY__?.add?.({ts:Date.now(),type:"ai_action",scope,data:result});
 
-    window.__AI_EXPLAIN__?.add?.({
-      taskId:input?.id || input?.taskId || null,
-      scope,
-      provider:result.provider,
-      breakdown:result
-    });
+    window.__AI_EXPLAIN__?.add?.({taskId:input?.id || input?.taskId || null,scope,provider:result.provider,breakdown:result});
 
     const text = typeof input === "string" ? input : JSON.stringify(input);
     window.__AI_EMBEDDINGS__?.add?.(text,{scope});
@@ -77,26 +54,18 @@ AI INTEGRATION LAYER (ADDED)
     return result;
   };
 
+  // scheduler
   window.aiSchedule = async function(task){
-
     const context = {
       task,
       memory: window.__AI_MEMORY__?.recent?.(20) || [],
       prefs: window.__AI_PREFERENCES__?.weights || {}
     };
-
     return window.aiQuery({scope:"scheduler",input:context,mode:"auto"});
   };
 
   window.aiOverride = function(taskId,change){
-
-    window.__AI_MEMORY__?.add?.({
-      ts:Date.now(),
-      type:"override",
-      scope:"scheduler",
-      data:{taskId,change}
-    });
-
+    window.__AI_MEMORY__?.add?.({ts:Date.now(),type:"override",scope:"scheduler",data:{taskId,change}});
     window.__AI_PREFERENCES__?.registerOverride?.(change);
   };
 
@@ -118,64 +87,77 @@ AI INTEGRATION LAYER (ADDED)
 
   window.bindCalendarTask = function(el,task){
     if(!el) return;
-    el.addEventListener("click",()=>{
-      window.renderAIExplainPanel?.(task.id);
-    });
+    el.addEventListener("click",()=>window.renderAIExplainPanel?.(task.id));
   };
 
   // =============================
-  // AI MODE UI TOGGLE (ADDED)
+  // PERFORMANCE DASHBOARD (NEW)
   // =============================
 
-  window.attachAIModeUI = function(){
-    if(document.getElementById("ai-mode-toggle")) return;
+  window.__AI_PERF = {
+    get(){
+      const gov = window.__AI_GOVERNOR__;
+      return {
+        mode: window.__AI_MODE__?.value,
+        memory: window.__AI_MEMORY__?.entries?.length || 0,
+        embeddings: window.__AI_EMBEDDINGS__?.items?.length || 0,
+        explain: window.__AI_EXPLAIN__?.traces?.length || 0,
+        lastEmbeddingAt: gov?.lastEmbeddingAt || 0
+      };
+    }
+  };
+
+  window.attachAIPerfDashboard = function(){
+
+    if(document.getElementById("ai-perf-dashboard")) return;
 
     const el = document.createElement("div");
-    el.id = "ai-mode-toggle";
+    el.id = "ai-perf-dashboard";
     el.style.position = "fixed";
-    el.style.top = "10px";
+    el.style.bottom = "10px";
     el.style.right = "10px";
+    el.style.width = "220px";
+    el.style.fontSize = "11px";
+    el.style.background = "rgba(0,0,0,0.75)";
+    el.style.color = "#fff";
+    el.style.padding = "8px";
+    el.style.borderRadius = "8px";
     el.style.zIndex = "99999";
 
-    el.innerHTML = `
-      <select>
-        <option value="off">AI Off</option>
-        <option value="assist">Assist</option>
-        <option value="full" selected>Full</option>
-        <option value="experimental">Experimental</option>
-      </select>
-    `;
+    function render(){
+      const s = window.__AI_PERF.get();
+      el.innerHTML = `
+        <div><b>AI PERF</b></div>
+        <div>mode: ${s.mode}</div>
+        <div>memory: ${s.memory}</div>
+        <div>embeddings: ${s.embeddings}</div>
+        <div>explain: ${s.explain}</div>
+        <div>embed ts: ${s.lastEmbeddingAt}</div>
+      `;
+    }
 
-    const select = el.querySelector("select");
-    select.value = window.__AI_MODE__.value;
-
-    select.onchange = (e)=>{
-      window.__AI_MODE__.value = e.target.value;
-    };
+    render();
+    setInterval(render, 2500);
 
     document.body.appendChild(el);
   };
 
-  setTimeout(()=>window.attachAIModeUI?.(),500);
+  setTimeout(()=>window.attachAIPerfDashboard?.(),800);
 
 })();
 
-// =====================================================
-// MATERIALIZED AI SUBSYSTEMS (FINAL LAYER)
-// =====================================================
+// =============================
+// SUBSYSTEMS
+// =============================
 
-// MEMORY ENGINE
 const AI_MEMORY = {
   entries: [],
   add(entry){
     this.entries.push(entry);
-
-    // GOVERNOR CAP
     const gov = window.__AI_GOVERNOR__;
     if(gov && this.entries.length > gov.maxMemoryEntries){
       this.entries = this.entries.slice(-200);
     }
-
     localStorage.setItem("AI_MEMORY", JSON.stringify(this.entries));
   },
   query(fn){ return this.entries.filter(fn); },
@@ -185,22 +167,17 @@ const AI_MEMORY = {
 AI_MEMORY.load();
 window.__AI_MEMORY__=AI_MEMORY;
 
-// EMBEDDINGS
 const AI_EMBEDDINGS = {
   items: [],
   async add(text,metadata={}){
-
     const gov = window.__AI_GOVERNOR__;
-
-    // THROTTLE
     const now = Date.now();
-    if(gov && (now - gov.lastEmbeddingAt < gov.embeddingThrottleMs)){
-      return;
-    }
+
+    if(gov && now - gov.lastEmbeddingAt < gov.embeddingThrottleMs) return;
     if(gov) gov.lastEmbeddingAt = now;
 
-    if(window.__AI_EMBED_CACHE__?.has(text)) return;
     window.__AI_EMBED_CACHE__ = window.__AI_EMBED_CACHE__ || new Map();
+    if(window.__AI_EMBED_CACHE__.has(text)) return;
     window.__AI_EMBED_CACHE__.set(text,true);
 
     try{
@@ -210,9 +187,9 @@ const AI_EMBEDDINGS = {
         body:JSON.stringify({model:"nomic-embed-text",prompt:text})
       });
       const data = await res.json();
+
       this.items.push({text,embedding:data.embedding,metadata,ts:Date.now()});
 
-      // CAP
       if(gov && this.items.length > gov.maxEmbeddings){
         this.items = this.items.slice(-150);
       }
@@ -234,7 +211,6 @@ const AI_EMBEDDINGS = {
 AI_EMBEDDINGS.load();
 window.__AI_EMBEDDINGS__=AI_EMBEDDINGS;
 
-// PREFERENCES
 const AI_PREFERENCES = {
   weights:{urgency:2,deadline:3,energy:-1,duration:-0.01},
   overrides:[],
@@ -257,18 +233,14 @@ const AI_PREFERENCES = {
 AI_PREFERENCES.load();
 window.__AI_PREFERENCES__=AI_PREFERENCES;
 
-// EXPLAIN
 const AI_EXPLAIN={
   traces:[],
   add(t){
     this.traces.push(t);
-
-    // CAP
     const gov = window.__AI_GOVERNOR__;
     if(gov && this.traces.length > gov.maxExplainTraces){
       this.traces = this.traces.slice(-150);
     }
-
     localStorage.setItem("AI_EXPLAIN",JSON.stringify(this.traces));
   },
   get(id){return this.traces.find(t=>t.taskId===id);},
