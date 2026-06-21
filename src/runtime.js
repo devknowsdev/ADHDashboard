@@ -269,6 +269,8 @@ function _handleDateRollover(currentDateStr){
   dayWizardState={date:dateToYMD(new Date()),phase:null,step:0,startDone:false,endDone:false,wizBannerDismissedAt:0};
   dayWizardOpen=false;
   wizReviewMode=false;
+  weeklyAiNudge=null;
+  _maybeFireWeeklyNudge();
   save();
   render();
 }

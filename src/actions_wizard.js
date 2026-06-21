@@ -33,8 +33,19 @@ function openDayWizard(phase){
   wizCaptureList=[];
   wizShowAllCarryOver=false;
   wizReviewMode=false;
+  wizAiPrompt=null;
+  wizDayEndPrompt=null;
+  wizCarryOverInsight=null;
   save();
   render();
+  const todayYmd=dateToYMD(new Date());
+  if(phase==='start'&&aiSettings.masterEnabled){
+    _wizFetchPersonalisedPrompt(todayYmd);
+  }
+  if(phase==='end'&&aiSettings.masterEnabled){
+    _wizFetchDayEndPrompt(todayYmd);
+    _wizFetchCarryOverInsight();
+  }
 }
 
 function closeDayWizard(){

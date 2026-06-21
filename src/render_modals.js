@@ -374,3 +374,86 @@ function renderCatModalHtml(){
     </div>
   </div>`;
 }
+
+function renderSettingsModalHtml(){
+  const providerVal=_aiProviderOrderValue();
+  const keyDisplay=aiShowKey?esc(aiSettings.anthropicKey):'••••••••••••';
+
+  const aiTab=`
+    <div style="font-size:14px;font-weight:800;color:${T.text};margin-bottom:14px;">
+      <i class="ti ti-sparkles"></i> AI Assistant
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;cursor:pointer;">
+      <input type="checkbox" ${aiSettings.masterEnabled?'checked':''} onchange="settingsSetAiMaster(this.checked)"/>
+      <span style="font-size:13px;color:${T.text};">Enable AI features</span>
+    </label>
+    <div style="font-size:10px;font-weight:700;color:${T.muted};letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Providers</div>
+    <div style="margin-bottom:12px;">
+      <span style="font-size:11px;color:${T.muted};">Priority:</span>
+      <select onchange="settingsSetAiProviderOrder(this.value)" style="${selectStyle('font-size:11px;padding:4px 8px;margin-left:6px;')}">
+        <option value="ollama-first" ${providerVal==='ollama-first'?'selected':''}>Ollama first</option>
+        <option value="anthropic-first" ${providerVal==='anthropic-first'?'selected':''}>Claude first</option>
+        <option value="ollama-only" ${providerVal==='ollama-only'?'selected':''}>Ollama only</option>
+        <option value="anthropic-only" ${providerVal==='anthropic-only'?'selected':''}>Claude only</option>
+      </select>
+    </div>
+    <div style="padding:10px;background:${T.surface2};border-radius:10px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:${T.text};margin-bottom:8px;">Ollama (local, private)</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+        <input type="checkbox" ${aiSettings.ollamaEnabled?'checked':''} onchange="settingsSetOllamaEnabled(this.checked)"/>
+        <span style="font-size:12px;color:${T.text};">Enable Ollama</span>
+      </label>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:${T.muted};width:42px;">URL:</span>
+        <input type="text" value="${esc(aiSettings.ollamaUrl||OLLAMA_DEFAULT_URL)}"
+          onchange="settingsSaveOllamaUrl(this.value)"
+          style="${inputStyle('flex:1;min-width:160px;font-size:11px;')}"/>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:${T.muted};width:42px;">Model:</span>
+        <input type="text" value="${esc(aiSettings.ollamaModel||OLLAMA_DEFAULT_MODEL)}"
+          onchange="settingsSaveOllamaModel(this.value)"
+          style="${inputStyle('flex:1;min-width:120px;font-size:11px;')}"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button onclick="settingsTestOllama()" style="${btnStyle('default','font-size:11px;padding:4px 10px;')}">Test connection</button>
+        ${_aiStatusDot('ollama')}
+      </div>
+      <div style="font-size:10px;color:${T.muted2};margin-top:6px;">Suggested: llama3.2, mistral, phi3, gemma2</div>
+    </div>
+    <div style="padding:10px;background:${T.surface2};border-radius:10px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:${T.text};margin-bottom:8px;">Claude API</div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+        <input type="checkbox" ${aiSettings.anthropicEnabled?'checked':''} disabled style="opacity:0.6;"/>
+        <span style="font-size:12px;color:${T.muted};">Enabled when key is set</span>
+      </label>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:${T.muted};width:42px;">Key:</span>
+        <input type="${aiShowKey?'text':'password'}" value="${keyDisplay}"
+          placeholder="sk-ant-…"
+          onchange="settingsSaveAnthropicKey(this.value)"
+          style="${inputStyle('flex:1;min-width:160px;font-size:11px;font-family:DM Mono,monospace;')}"/>
+        <button onclick="settingsToggleShowKey()" style="${btnStyle('default','font-size:11px;padding:4px 8px;')}">${aiShowKey?'hide':'show'}</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button onclick="settingsTestAnthropic()" style="${btnStyle('default','font-size:11px;padding:4px 10px;')}">Test connection</button>
+        ${_aiStatusDot('anthropic')}
+      </div>
+      <div style="font-size:10px;color:${T.muted2};margin-top:6px;">Key stored locally only. Task text is sent to Anthropic servers.</div>
+    </div>
+    <div style="font-size:10px;color:${T.muted2};padding:8px;background:${T.surface3};border-radius:8px;line-height:1.5;">
+      <i class="ti ti-info-circle"></i> Voice recordings and journal entries are never sent to any AI provider.
+      Only task text and summary statistics are used in AI calls.
+    </div>`;
+
+  return `
+  <div onclick="if(event.target===this)closeSettings()" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:${T.surface};border:1.5px solid ${T.border2};border-radius:16px;padding:18px;width:100%;max-width:480px;box-sizing:border-box;max-height:90vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:800;color:${T.text};">Settings</span>
+        <button onclick="closeSettings()" style="${btnStyle('default','padding:5px 9px;font-size:14px;')}"><i class="ti ti-x"></i></button>
+      </div>
+      ${aiTab}
+    </div>
+  </div>`;
+}

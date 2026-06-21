@@ -424,12 +424,17 @@ function _renderTaskRow(t,todayStr){
     // Delete button
     const deleteBtn=`<button onclick="event.stopPropagation();deleteTask(${t.id})" style="${btnStyle('danger','font-size:10px;padding:2px 7px;')}"><i class="ti ti-trash"></i>delete</button>`;
 
+    const aiBreakdownBtn=(aiSettings.masterEnabled&&(t.subtasks||[]).length<2)
+      ?`<button onclick="event.stopPropagation();taskAiBreakdown(${t.id})" style="${btnStyle('default','font-size:10px;padding:2px 7px;')}"><i class="ti ti-sitemap"></i> AI breakdown</button>`
+      :'';
+
     const overflowPanel=overflowOpen?`
       <div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:6px 6px 6px 34px;border-top:0.5px solid ${T.border};background:${T.surface2};">
         ${estimateHtml}
         ${timeEditBtn}
         ${noteBtn}
         ${subtaskBtn}
+        ${aiBreakdownBtn}
         ${pinBtn}
         ${deleteBtn}
       </div>`:'';

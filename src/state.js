@@ -198,3 +198,26 @@ let wizCaptureList=[];            // ephemeral list of items captured this wizar
 let wizShowAllCarryOver=false;    // ephemeral UI toggle for the carry-over step's "show all" (not persisted)
 let wizReviewMode=false;          // ephemeral — true while inside the Untracked Day "it went differently" per-task review sub-flow (not persisted)
 let dayEndHour=17;                // hour (0-23) after which the Day End banner can appear
+
+// ── AI settings & status ──────────────────────────────────────────────────────
+let aiSettings={
+  masterEnabled:    false,
+  providerOrder:    ['ollama', 'anthropic'],
+  ollamaEnabled:    false,
+  ollamaUrl:        'http://localhost:11434',
+  ollamaModel:      'llama3.2',
+  anthropicEnabled: false,
+  anthropicKey:     '',
+};
+let aiStatus={
+  ollama:    'unknown',
+  anthropic: 'unknown',
+};
+let aiPendingParse=null;          // parsed task fields awaiting user confirmation
+let aiShowKey=false;              // settings UI: reveal Anthropic key
+let wizAiPrompt=null;             // personalised Day Start capture prompt (ephemeral)
+let wizDayEndPrompt=null;         // personalised Day End reflection question (ephemeral)
+let wizCarryOverInsight=null;     // carry-over nudge sentence (ephemeral)
+let weeklyAiNudge=null;           // weekly pattern observation (ephemeral)
+let showSettingsModal=false;      // settings overlay open
+let settingsTab='ai';             // active settings tab

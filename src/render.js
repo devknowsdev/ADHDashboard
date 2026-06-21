@@ -194,6 +194,7 @@ function _doRender(){
     <div style="font-size:16px;font-weight:600;color:${T.accent}">focus<span style="color:${T.accent2}">.</span></div>
     <div style="display:flex;align-items:center;gap:10px;">
       <span class="header-date" style="font-size:11px;color:${T.muted};">${dateStr}</span>
+      <button onclick="openSettings()" title="Settings" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-settings"></i></button>
       <button onclick="enterCrisisMode()" title="Focus mode — hide everything except the timer" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-focus-2"></i></button>
       <button onclick="toggleDark()" title="${darkMode?'Light mode':'Dark mode'}" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-${darkMode?'sun':'moon'}"></i></button>
     </div>
@@ -205,6 +206,7 @@ function _doRender(){
     <button onclick="openWidgetDrawer()" style="${btnStyle('default','font-size:12px;padding:7px 18px;border-radius:999px;')}"><i class="ti ti-layout-grid-add"></i> + Widgets (${hiddenCount} hidden)</button>
   </div>`:''}
   ${showCatModal?renderCatModalHtml():''}
+  ${showSettingsModal?renderSettingsModalHtml():''}
   ${showFocusModal?renderFocusModalHtml():''}
   ${showSessionsModal?renderSessionsModalHtml():''}
   ${showQuickLog?renderQuickLogHtml():''}

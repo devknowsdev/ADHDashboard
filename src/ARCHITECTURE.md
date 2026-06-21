@@ -3,12 +3,24 @@
 **Verify before reading anything — run, don't view:**
 ```
 grep -c "^registerWidget(" *.js | awk -F: '{s+=$2} END{print s}'  # expect 8 (wizard is NOT a widget — does not add to this count)
-node test_workflows.js | tail -3  # expect 313 passed, 0 failed
+node test_workflows.js | tail -3  # expect 331 passed, 0 failed
 ```
 
-**Completed this session: Day Wizard (HANDOFF_day_wizard.md)**
+**Completed: AI Integration Layer (HANDOFF_ai.md)**
 
-313 tests passing — WF30 (Day Wizard) added on top of the prior 296.
+331 tests passing — WF31 (AI Layer) added on top of the prior 313.
+
+### AI layer (`src/ai.js`)
+Provider abstraction: Ollama (local-first) + Anthropic Claude. Settings stored
+separately under `adhd4_ai_settings` + `adhd4_ai_key` (never in JSON backup).
+All AI calls return `null` on failure — full graceful degradation when disabled
+or unreachable. Privacy: only task text + aggregate stats sent; voice/journal
+never sent.
+
+Integration points: Dump NL parse, task AI breakdown, wizard personalised
+prompts, weekly nudge in Check-in. Settings modal (gear icon in header).
+
+**Previously completed: Day Wizard (HANDOFF_day_wizard.md)**
 
 ### What it is
 A guided Day Start / Day End overlay, triggered by a dismissable banner at
@@ -225,5 +237,5 @@ the timeline view for that date.
 `test_workflows.js` — Node harness, 29 workflow groups (WF1–WF29), 296 tests.
 Run: `node test_workflows.js`. Must stay green every session.
 
-Files loaded from `/home/claude/project/src/` during test runs.
+Files loaded from `src/` via `__dirname` during test runs.
 Any new source file → add to `FILES` array in `test_workflows.js`.

@@ -89,6 +89,7 @@ function load(){
       return ts>=cutoff||e.date===todayStr;
     });
     if(offTaskLog.length!==otBefore) localStorage.setItem('adhd4_offtask',JSON.stringify(offTaskLog));
+    loadAiSettings();
   }catch(e){
     categories=defaultCats.map(c=>({...c}));
   }

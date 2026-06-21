@@ -36,7 +36,7 @@ Requires Node.js (no npm install):
 node src/test_workflows.js
 ```
 
-Expect **313 passed, 0 failed**.
+Expect **331 passed, 0 failed**.
 
 Architecture lint (optional):
 
@@ -65,7 +65,7 @@ src/
   render.js         Main render orchestrator
   runtime.js        Global listeners and intervals
   init.js           Boot: load → migrate → render
-  test_workflows.js Node test harness (313 tests)
+  test_workflows.js Node test harness (331 tests)
   ARCHITECTURE.md   Developer map — read before changing code
 tools/
   validate_architecture.py

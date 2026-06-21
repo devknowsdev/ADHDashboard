@@ -130,6 +130,28 @@ function renderJournalWidget(todayStr){
       ?'How\'s it going?'
       :'Any thought, link, name — capture it now, sort it later';
 
+  const aiParseBtn=aiSettings.masterEnabled?`
+    <button onclick="dumpAiParse()" style="${btnStyle('default','font-size:11px;padding:5px 11px;')}">
+      <i class="ti ti-sparkles"></i> Parse
+    </button>`:'';
+
+  const aiConfirmCard=aiPendingParse?`
+    <div style="margin-top:8px;padding:10px;background:${T.surface2};border:1.5px solid ${T.borderBlue||T.border};border-radius:10px;">
+      <div style="font-size:11px;font-weight:700;color:${T.text};margin-bottom:8px;">
+        <i class="ti ti-sparkles"></i> AI parsed this as:${_aiSparkle()}
+      </div>
+      <div style="font-size:12px;color:${T.text};line-height:1.6;margin-bottom:10px;">
+        ${aiPendingParse.text?`<div><span style="color:${T.muted};">Task:</span> ${esc(aiPendingParse.text)}</div>`:''}
+        ${aiPendingParse.ts?`<div><span style="color:${T.muted};">Time:</span> ${esc(aiPendingParse.ts)}</div>`:''}
+        ${aiPendingParse.taskScope?`<div><span style="color:${T.muted};">Scope:</span> ${esc(aiPendingParse.taskScope)}</div>`:''}
+        ${aiPendingParse.note?`<div><span style="color:${T.muted};">Note:</span> ${esc(aiPendingParse.note)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="dumpAiConfirm()" style="${btnStyle('accent','font-size:11px;padding:5px 11px;')}">Looks right, add it</button>
+        <button onclick="dumpAiEdit()" style="${btnStyle('default','font-size:11px;padding:5px 11px;')}">Edit</button>
+      </div>
+    </div>`:'';
+
   return `
     <div id="journal-card" data-no-clobber="true">
     <div style="margin-bottom:8px;">
@@ -142,7 +164,9 @@ function renderJournalWidget(todayStr){
         <select onchange="journalNewType=this.value;render()" style="${selectStyle('font-size:11px;padding:4px 8px;min-width:90px;')}">${typeOpts}</select>
         <select id="journal-capture-cat" style="${selectStyle('font-size:11px;padding:4px 8px;flex:1;min-width:100px;')}">${catOpts}</select>
         <button onclick="addJournalEntry()" style="${btnStyle('accent','font-size:11px;padding:5px 11px;')}"><i class="ti ti-plus"></i>Save</button>
+        ${aiParseBtn}
       </div>
+      ${aiConfirmCard}
       ${recBar}
     </div>
     <div style="display:flex;gap:0;border-bottom:1.5px solid ${T.border};margin-bottom:6px;">${filterTabs}</div>

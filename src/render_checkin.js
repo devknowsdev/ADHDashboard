@@ -169,7 +169,16 @@ function renderCheckinWidget(todayStr,now){
     </div>`;
 
   const intentionsSection=_renderIntentionsSection(dailyIntentions.step,dailyIntentions.answers,dailyIntentions.step==='done',todayStr,now);
+
+  const weeklyNudgeHtml=weeklyAiNudge?`
+    <div style="padding:10px 12px;background:${T.surface2};border:1.5px solid ${T.borderBlue||T.border};border-radius:10px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;">
+      <span style="font-size:14px;flex-shrink:0;"><i class="ti ti-sparkles"></i></span>
+      <div style="flex:1;font-size:12px;color:${T.text};line-height:1.5;">${esc(weeklyAiNudge)}</div>
+      <button onclick="dismissWeeklyAiNudge()" style="${btnStyle('default','font-size:10px;padding:2px 6px;flex-shrink:0;')}"><i class="ti ti-x"></i></button>
+    </div>`:'';
+
   return `
+    ${weeklyNudgeHtml}
     <div style="${labelStyle()}"><i class="ti ti-heart-rate-monitor"></i>energy</div>
     ${energySection}
     <div style="${labelStyle()}"><i class="ti ti-clipboard-list"></i>daily plan</div>

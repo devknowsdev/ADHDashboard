@@ -234,9 +234,10 @@ function _wizMinsToHHMM(mins){
 function _renderWizStep_RapidCapture(todayYmd){
   const existing=getEnergyToday(new Date().toDateString());
   const energy=energyPending.energy!=null?energyPending.energy:(existing?existing.energy:3);
-  const prompt=energy<=2?"What's the ONE thing that has to happen today?"
+  const fallbackPrompt=energy<=2?"What's the ONE thing that has to happen today?"
     :energy===3?'What are the two or three things that matter most today?'
     :'What needs to happen today? Dump it all.';
+  const prompt=(wizAiPrompt||fallbackPrompt)+(wizAiPrompt?_aiSparkle():'');
 
   const captured=plannerDayDumps[todayYmd]||[];
   const capturedRows=captured.map(item=>`
@@ -395,9 +396,10 @@ function _renderWizStep_UntrackedDay(todayYmd){
 
 // ── Step 1 (end) — How did it go ─────────────────────────────────────────────
 function _renderWizStep_HowDidItGo(){
+  const heading=wizDayEndPrompt||'One word or phrase — how was today?';
   return `
     <div style="font-size:13px;font-weight:700;color:${T.text};margin-bottom:10px;">
-      One word or phrase — how was today?
+      ${esc(heading)}${wizDayEndPrompt?_aiSparkle():''}
     </div>
     <input id="wiz-reflect-input" type="text" placeholder="…" data-no-clobber="true"
       style="${inputStyle('margin-bottom:12px;')}"/>
@@ -447,6 +449,7 @@ function _renderWizStep_CarryOver(){
     <div style="font-size:13px;font-weight:700;color:${T.text};margin-bottom:10px;">
       What's carrying forward to tomorrow?
     </div>
+    ${wizCarryOverInsight?`<div style="font-size:12px;color:${T.muted};font-style:italic;margin-bottom:10px;line-height:1.4;">${esc(wizCarryOverInsight)}${_aiSparkle()}</div>`:''}
     ${incomplete.length?`<div style="max-height:240px;overflow-y:auto;">${rows}</div>${showAllToggle}`
       :`<div style="font-size:12px;color:${T.muted2};margin-bottom:10px;">Nothing incomplete — nice.</div>`}
     <div style="display:flex;justify-content:center;margin-top:14px;">

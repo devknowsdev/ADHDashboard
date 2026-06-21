@@ -69,13 +69,15 @@ const setInterval   = ()  => 1;
 const clearInterval = ()  => {};
 const setTimeout    = (fn,ms) => { try { fn(); } catch(e){} return 1; };
 const clearTimeout  = ()  => {};
+const fetch         = async () => { throw new Error('network disabled in tests'); };
+const AbortSignal   = { timeout: () => ({ aborted: false, addEventListener: () => {} }) };
 
 const ctx = vm.createContext({
   localStorage, document, window,
   requestAnimationFrame, cancelAnimationFrame, performance,
   navigator, location, confirm, alert, prompt, URL,
   indexedDB, Blob, MediaRecorder, setInterval, clearInterval,
-  setTimeout, clearTimeout,
+  setTimeout, clearTimeout, fetch, AbortSignal,
   console, Date, Math, JSON, Array, Object, String, Number,
   Boolean, Set, Map, parseInt, parseFloat, isNaN, isFinite,
   Error, Promise, RegExp,
@@ -83,7 +85,7 @@ const ctx = vm.createContext({
 
 const FILES = [
   'constants.js','state.js','widget_registry.js','helpers.js','core.js',
-  'storage.js','ui.js','audio.js',
+  'storage.js','ai.js','ui.js','audio.js',
   'render_focusboard_cards.js','render_focus_timer.js','render_focus.js','render_tasks.js','render_habits.js',
   'render_checkin.js','render_journal.js','render_daylog.js','actions.js',
   'render_modals.js','render.js','music.js','render_music.js',
@@ -140,6 +142,10 @@ function resetState() {
     dayWizardState={date:dateToYMD(new Date()),phase:null,step:0,startDone:false,endDone:false,wizBannerDismissedAt:0};
     dayWizardOpen=false; wizCaptureInput=''; wizCaptureList=[]; wizShowAllCarryOver=false;
     wizReviewMode=false;
+    aiSettings={masterEnabled:false,providerOrder:['ollama','anthropic'],ollamaEnabled:false,ollamaUrl:'http://localhost:11434',ollamaModel:'llama3.2',anthropicEnabled:false,anthropicKey:''};
+    aiStatus={ollama:'unknown',anthropic:'unknown'};
+    aiPendingParse=null; aiShowKey=false; wizAiPrompt=null; wizDayEndPrompt=null;
+    wizCarryOverInsight=null; weeklyAiNudge=null; showSettingsModal=false;
     invalidateAvoidanceCache();
     saveNow();
   `, ctx);
@@ -2591,6 +2597,162 @@ test('dayWizardState resets on date rollover', () => {
   eq(get('dayWizardState.startDone'), false, 'startDone reset');
   eq(get('dayWizardState.endDone'), false, 'endDone reset');
   eq(get('dayWizardOpen'), false);
+});
+
+
+console.log('\n═══ WF31: AI Layer ═══');
+resetState();
+
+run(`
+  aiSettings.masterEnabled = false;
+  aiSettings.ollamaEnabled = false;
+  aiSettings.anthropicEnabled = false;
+  aiStatus = { ollama: 'unknown', anthropic: 'unknown' };
+  aiPendingParse = null;
+`);
+
+test('aiSettings loads with defaults when no localStorage key', () => {
+  run('localStorage.removeItem("adhd4_ai_settings"); localStorage.removeItem("adhd4_ai_key"); loadAiSettings()');
+  eq(get('aiSettings.masterEnabled'), false);
+  eq(get('aiSettings.ollamaEnabled'), false);
+  eq(get('aiSettings.ollamaUrl'), 'http://localhost:11434');
+  eq(get('aiSettings.ollamaModel'), 'llama3.2');
+  eq(get('aiSettings.anthropicEnabled'), false);
+});
+
+test('saveAiSettings and loadAiSettings round-trip (without key)', () => {
+  run(`
+    aiSettings.masterEnabled = true;
+    aiSettings.ollamaEnabled = true;
+    aiSettings.ollamaModel = 'mistral';
+    aiSettings.anthropicKey = '';
+    saveAiSettings();
+    aiSettings = { masterEnabled:false, ollamaEnabled:false,
+                   ollamaModel:'llama3.2', anthropicKey:'',
+                   providerOrder:['ollama','anthropic'],
+                   ollamaUrl:'http://localhost:11434',
+                   anthropicEnabled:false };
+    loadAiSettings();
+  `);
+  eq(get('aiSettings.masterEnabled'), true);
+  eq(get('aiSettings.ollamaEnabled'), true);
+  eq(get('aiSettings.ollamaModel'), 'mistral');
+});
+
+test('saveAiSettings stores key separately', () => {
+  run(`aiSettings.anthropicKey = 'sk-ant-test'; saveAiSettings()`);
+  const mainStore = JSON.parse(run(`localStorage.getItem('adhd4_ai_settings')`) || '{}');
+  assert(!mainStore.anthropicKey, 'key not in main settings blob');
+  eq(run(`localStorage.getItem('adhd4_ai_key')`), 'sk-ant-test');
+});
+
+test('loadAiSettings restores key from separate store', () => {
+  run(`aiSettings.anthropicKey = ''; loadAiSettings()`);
+  eq(get('aiSettings.anthropicKey'), 'sk-ant-test');
+});
+
+test('settingsSetAiMaster toggles masterEnabled', () => {
+  run('settingsSetAiMaster(true)');  eq(get('aiSettings.masterEnabled'), true);
+  run('settingsSetAiMaster(false)'); eq(get('aiSettings.masterEnabled'), false);
+});
+
+test('settingsSetOllamaEnabled toggles ollamaEnabled', () => {
+  run('settingsSetOllamaEnabled(true)');  eq(get('aiSettings.ollamaEnabled'), true);
+  run('settingsSetOllamaEnabled(false)'); eq(get('aiSettings.ollamaEnabled'), false);
+});
+
+test('settingsSaveOllamaUrl stores trimmed url', () => {
+  run("settingsSaveOllamaUrl('  http://192.168.1.5:11434  ')");
+  eq(get('aiSettings.ollamaUrl'), 'http://192.168.1.5:11434');
+});
+
+test('settingsSaveOllamaUrl falls back to default on empty', () => {
+  run("settingsSaveOllamaUrl('')");
+  eq(get('aiSettings.ollamaUrl'), 'http://localhost:11434');
+});
+
+test('settingsSaveOllamaModel stores trimmed model', () => {
+  run("settingsSaveOllamaModel('  mistral  ')");
+  eq(get('aiSettings.ollamaModel'), 'mistral');
+});
+
+test('settingsSetAiProviderOrder maps preset to array', () => {
+  run("settingsSetAiProviderOrder('anthropic-first')");
+  const order = get('aiSettings.providerOrder');
+  eq(order[0], 'anthropic'); eq(order[1], 'ollama');
+  run("settingsSetAiProviderOrder('ollama-only')");
+  eq(get('aiSettings.providerOrder.length'), 1);
+  eq(get('aiSettings.providerOrder[0]'), 'ollama');
+});
+
+test('settingsSaveAnthropicKey sets key and enables anthropic', () => {
+  run("settingsSaveAnthropicKey('sk-ant-abc123')");
+  eq(get('aiSettings.anthropicKey'), 'sk-ant-abc123');
+  eq(get('aiSettings.anthropicEnabled'), true);
+});
+
+test('settingsSaveAnthropicKey empty string disables anthropic', () => {
+  run("settingsSaveAnthropicKey('')");
+  eq(get('aiSettings.anthropicEnabled'), false);
+});
+
+test('dumpAiEdit clears aiPendingParse', () => {
+  run(`aiPendingParse = { text:'Test', ts:'09:00', catId:'', taskScope:'day', note:'' }`);
+  run('dumpAiEdit()');
+  eq(get('aiPendingParse'), null);
+});
+
+test('dumpAiConfirm with pending parse creates task and journal entry', () => {
+  run(`
+    tasks = [];
+    journalEntries = [];
+    aiPendingParse = {
+      text: 'Call dentist',
+      ts: '15:00',
+      catId: '',
+      taskScope: 'day',
+      note: 'fast beforehand',
+      rawText: 'dentist thursday 3pm fast beforehand'
+    };
+    dumpAiConfirm();
+  `);
+  eq(get('tasks.length'), 1, 'task created');
+  eq(get('tasks[0].text'), 'Call dentist');
+  eq(get('tasks[0].ts'), '15:00');
+  eq(get('tasks[0].taskScope'), 'day');
+  eq(get('tasks[0].note'), 'fast beforehand');
+  eq(get('journalEntries.length'), 1, 'audit entry created');
+  eq(get('journalEntries[0].aiParsed'), true);
+  eq(get('aiPendingParse'), null, 'pending parse cleared');
+});
+
+test('dumpAiConfirm with null aiPendingParse is no-op', () => {
+  run('tasks=[]; aiPendingParse=null; dumpAiConfirm()');
+  eq(get('tasks.length'), 0);
+});
+
+test('task unchanged when no AI subtasks added', () => {
+  run(`
+    tasks=[{id:31001,text:'Write report',catId:'work',done:false,
+      status:'todo',ts:'',order:0,createdAt:Date.now(),repeat:null,
+      templateId:null,generatedForDate:null,pinned:false,urgency:0,
+      subtasks:[],estimatedMins:null,note:'',anxiety:0,
+      taskScope:'project',doneDate:'',durationMins:null}];
+  `);
+  eq(get('tasks.find(t=>t.id===31001).subtasks.length'), 0);
+});
+
+test('aiStatus defaults to unknown for both providers', () => {
+  run('aiStatus = { ollama:"unknown", anthropic:"unknown" }');
+  eq(get('aiStatus.ollama'), 'unknown');
+  eq(get('aiStatus.anthropic'), 'unknown');
+});
+
+test('AI key not included in main settings blob', () => {
+  run("aiSettings.anthropicKey='sk-ant-secret'; saveAiSettings()");
+  const mainStore = JSON.parse(run(`localStorage.getItem('adhd4_ai_settings')`) || '{}');
+  assert(!mainStore.anthropicKey, 'key not in main settings blob');
+  assert(!JSON.stringify(mainStore).includes('sk-ant-secret'), 'secret not in settings JSON');
 });
 
 
