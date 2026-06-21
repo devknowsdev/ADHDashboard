@@ -17,6 +17,18 @@ AI INTEGRATION LAYER (ADDED)
     value: "full" // off | assist | full | experimental
   };
 
+  // =============================
+  // AI RESOURCE GOVERNOR (NEW)
+  // =============================
+
+  window.__AI_GOVERNOR__ = window.__AI_GOVERNOR__ || {
+    maxMemoryEntries: 300,
+    maxEmbeddings: 200,
+    maxExplainTraces: 200,
+    embeddingThrottleMs: 5000,
+    lastEmbeddingAt: 0
+  };
+
   function isAIEnabled(scope){
     const mode = window.__AI_MODE__?.value;
 
@@ -157,6 +169,13 @@ const AI_MEMORY = {
   entries: [],
   add(entry){
     this.entries.push(entry);
+
+    // GOVERNOR CAP
+    const gov = window.__AI_GOVERNOR__;
+    if(gov && this.entries.length > gov.maxMemoryEntries){
+      this.entries = this.entries.slice(-200);
+    }
+
     localStorage.setItem("AI_MEMORY", JSON.stringify(this.entries));
   },
   query(fn){ return this.entries.filter(fn); },
@@ -170,6 +189,16 @@ window.__AI_MEMORY__=AI_MEMORY;
 const AI_EMBEDDINGS = {
   items: [],
   async add(text,metadata={}){
+
+    const gov = window.__AI_GOVERNOR__;
+
+    // THROTTLE
+    const now = Date.now();
+    if(gov && (now - gov.lastEmbeddingAt < gov.embeddingThrottleMs)){
+      return;
+    }
+    if(gov) gov.lastEmbeddingAt = now;
+
     if(window.__AI_EMBED_CACHE__?.has(text)) return;
     window.__AI_EMBED_CACHE__ = window.__AI_EMBED_CACHE__ || new Map();
     window.__AI_EMBED_CACHE__.set(text,true);
@@ -182,6 +211,12 @@ const AI_EMBEDDINGS = {
       });
       const data = await res.json();
       this.items.push({text,embedding:data.embedding,metadata,ts:Date.now()});
+
+      // CAP
+      if(gov && this.items.length > gov.maxEmbeddings){
+        this.items = this.items.slice(-150);
+      }
+
       localStorage.setItem("AI_EMBEDDINGS",JSON.stringify(this.items));
     }catch(e){}
   },
@@ -225,7 +260,17 @@ window.__AI_PREFERENCES__=AI_PREFERENCES;
 // EXPLAIN
 const AI_EXPLAIN={
   traces:[],
-  add(t){this.traces.push(t);localStorage.setItem("AI_EXPLAIN",JSON.stringify(this.traces));},
+  add(t){
+    this.traces.push(t);
+
+    // CAP
+    const gov = window.__AI_GOVERNOR__;
+    if(gov && this.traces.length > gov.maxExplainTraces){
+      this.traces = this.traces.slice(-150);
+    }
+
+    localStorage.setItem("AI_EXPLAIN",JSON.stringify(this.traces));
+  },
   get(id){return this.traces.find(t=>t.taskId===id);},
   load(){this.traces=JSON.parse(localStorage.getItem("AI_EXPLAIN")||"[]");}
 };
