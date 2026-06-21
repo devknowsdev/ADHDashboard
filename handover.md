@@ -35,6 +35,9 @@ Smoke check performed (local)
 
 - Playwright smoke: ran `tools/playwright_smoke.js` against `http://localhost:8000` (headless Chromium) — result: PASS (no console errors, `#root` present).
  - Playwright smoke: ran `tools/playwright_smoke.js` against `http://localhost:8000` (headless Chromium) — result: PASS (no console errors, `#root` present). Expanded test now creates a planner dump, promotes it to a task, starts a timer, and verifies a session was saved.
+ - UX improvements:
+   - `quickCapture(text, openPlanner?)` added in `src/global_api_shim.js` to quickly add planner dumps for today and optionally open the planner.
+   - `toggleAudioRecording` now falls back to a file-upload flow when `getUserMedia` is unavailable, saving uploaded audio via `saveAudioBlob` and `saveAudioMeta`.
 
 If you want a deeper automated smoke test I can install Playwright and run a headless browser script, but that will add dependencies.
  - Pull request: https://github.com/devknowsdev/ADHDashboard/pull/1 (branch `shim-fixes` -> `main`).
