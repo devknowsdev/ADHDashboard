@@ -123,6 +123,14 @@ function _renderAiHeaderBtn(){
   </button>`;
 }
 
+function _renderChatHeaderBtn(){
+  return `<button onclick="openChatModal()" title="Open chat" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-message-circle"></i></button>`;
+}
+
+function _renderFilesHeaderBtn(){
+  return `<button onclick="openFileManager()" title="Files" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-folder"></i></button>`;
+}
+
 function _renderListenHeaderBtn(){
   const on=listenModeActive;
   return `<button onclick="toggleListenMode()" title="${on?'Voice listen mode on':'Enable voice commands'}" style="${btnStyle(on?'accent2':'default','padding:5px 9px;font-size:14px;border-radius:8px;')}">
@@ -221,6 +229,8 @@ function _doRender(){
       <span class="header-date" style="font-size:11px;color:${T.muted};">${dateStr}</span>
       ${_renderWizardHeaderBtn(now)}
       ${_renderAiHeaderBtn()}
+      ${_renderChatHeaderBtn()}
+      ${_renderFilesHeaderBtn()}
       ${_renderListenHeaderBtn()}
       <button onclick="dumpAiDailyPlan()" title="Ask AI for a daily plan suggestion" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-list-check"></i></button>
       <button onclick="openSettings()" title="Settings" style="${btnStyle('default','padding:5px 9px;font-size:14px;border-radius:8px;')}"><i class="ti ti-settings"></i></button>
@@ -239,6 +249,11 @@ function _doRender(){
   ${showAiAuditModal?renderAiAuditHtml():''}
   ${aiPendingInterpret?renderAiInterpretHtml():''}
   ${aiPendingSuggestion?renderAiDailyPlanHtml():''}
+  ${aiPendingPlan?renderAiPlanPreviewHtml():''}
+  ${aiExecStreaming?renderAiExecLogHtml():''}
+  ${aiPreviewDiff?renderAiDiffModalHtml():''}
+  ${showChatModal?renderChatModalHtml():''}
+  ${showFileManager?renderFileManagerModalHtml():''}
   ${showFocusModal?renderFocusModalHtml():''}
   ${showSessionsModal?renderSessionsModalHtml():''}
   ${showQuickLog?renderQuickLogHtml():''}

@@ -220,6 +220,7 @@ let showAiAuditModal = false;
 let aiPendingParse=null;          // parsed task fields awaiting user confirmation
 let aiPendingInterpret=null;      // interpreted journal entry awaiting user review
 let aiPendingSuggestion=null;     // AI-generated daily plan suggestions awaiting review
+let aiPendingPlan=null;           // AI-generated TaskGraph / plan preview awaiting review
 let aiShowKey=false;              // settings UI: reveal Anthropic key
 let wizAiPrompt=null;             // personalised Day Start capture prompt (ephemeral)
 let wizDayEndPrompt=null;         // personalised Day End reflection question (ephemeral)
@@ -227,3 +228,58 @@ let wizCarryOverInsight=null;     // carry-over nudge sentence (ephemeral)
 let weeklyAiNudge=null;           // weekly pattern observation (ephemeral)
 let showSettingsModal=false;      // settings overlay open
 let settingsTab='ai';             // active settings tab
+let aiExecStreaming=false;        // true while an execute-graph stream is active
+let aiApprovedNodes = {};         // nodeId -> true when the user approved file/terminal effects
+let aiPreviewDiff = null;         // { nodeId, diff, logs } shown in preview modal
+
+// Chat/conversation UI state
+let showChatModal = false;                // whether the chat modal is visible
+let chatConversations = [];               // list of {id,title,created_at}
+let activeConversationId = null;          // numeric id of the open conversation
+let chatMessages = {};                    // map convId -> array of messages
+let chatComposerText = '';                // current composer text
+let chatLoading = false;                  // loading indicator for chat actions
+let chatComposerAttachments = [];         // attachment ids queued for the composer
+let chatAttachmentMeta = {};              // attachmentId -> metadata + previewUrl
+
+// File manager UI state
+let showFileManager = false;
+let fileManagerLoading = false;
+let fileManagerFiles = []; // array of attachments with tags
+let fileManagerFilter = '';
+let fileManagerSelected = null; // selected attachment id
+let fileRepairPending = null; // { id }
+
+// Persist approved node IDs so approvals survive reloads.
+function loadAiApprovedNodesFromStorage() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem('adhd4_ai_approved_nodes');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      aiApprovedNodes = parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to load aiApprovedNodes from storage', e);
+    aiApprovedNodes = {};
+  }
+}
+
+function saveAiApprovedNodesToStorage() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem('adhd4_ai_approved_nodes', JSON.stringify(aiApprovedNodes || {}));
+  } catch (e) {
+    console.warn('Failed to save aiApprovedNodes to storage', e);
+  }
+}
+
+// Expose helpers globally in case other modules want to call them directly.
+if (typeof window !== 'undefined') {
+  window.loadAiApprovedNodesFromStorage = loadAiApprovedNodesFromStorage;
+  window.saveAiApprovedNodesToStorage = saveAiApprovedNodesToStorage;
+}
+
+// Initialize from storage on load
+loadAiApprovedNodesFromStorage();

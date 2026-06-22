@@ -110,6 +110,15 @@ function fmtDur(totalSecs){
   if(m>0) return `${m}m ${String(ss).padStart(2,'0')}s`;
   return `${ss}s`;
 }
+// Human-readable byte size
+function fmtBytes(n){
+  const b = Number(n) || 0;
+  if (b < 1024) return `${b} B`;
+  const units = ['KB','MB','GB','TB'];
+  let i = -1; let val = b;
+  while (val >= 1024 && i < units.length-1){ val = val/1024; i++; }
+  return `${val.toFixed(i<0?0:1)} ${units[Math.max(0,i)]}`;
+}
 // Format seconds as MM:SS string (for editable fields)
 function secsToMmSs(totalSecs){
   const s=Math.max(0,Math.round(totalSecs||0));

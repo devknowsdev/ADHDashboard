@@ -413,6 +413,167 @@ function dumpAiDailyPlanClose() {
   if (typeof render === 'function') render();
 }
 
+// --- Local adapter helpers and Plan preview UI glue ---
+async function aiAdapterIsAvailable() {
+  if (typeof window === 'undefined' || !window.AiAdapter) return false;
+  try { return await window.AiAdapter.isAvailable(); } catch (e) { return false; }
+}
+
+async function aiAdapterBuildGraph(opts) {
+  if (typeof window === 'undefined' || !window.AiAdapter) return null;
+  try { return await window.AiAdapter.buildGraph(opts); } catch (e) { console.warn('AiAdapter.buildGraph failed', e); return null; }
+}
+
+// Prompt the user for a short description and request a plan preview from the local adapter.
+// Falls back to the existing daily-plan suggestion path if the adapter is unavailable.
+async function openAiPlanPrompt() {
+  const desc = window.prompt('Describe what you want planned (short):');
+  if (!desc) return;
+  showToast('Generating plan preview…', 'ok');
+  let res = null;
+  if (await aiAdapterIsAvailable()) {
+    res = await aiAdapterBuildGraph({ graphId: 'plan-' + Date.now(), projectId: 'dashboard', description: desc, mode: 'build_feature' });
+  }
+  if (!res) {
+    // fallback: reuse the daily-plan suggestion flow as a graceful alternative
+    const suggestion = await aiDailyPlanSuggestion(3, tasks.filter(t => t.ts && t.status !== 'done').length, tasks.filter(t => !t.ts && t.status !== 'done').length, '', '');
+    if (suggestion) {
+      aiPendingPlan = { source: 'fallback-daily-plan', graph: { id: 'fallback', projectId: 'dashboard', nodes: suggestion.taskSuggestions.map((t, i) => ({ id: 's' + i, status: 'suggested', packet: { text: t.text, ts: t.ts, note: t.note } })) } };
+      render();
+      return;
+    }
+    showToast('Local AI unavailable and fallback failed', 'warn');
+    return;
+  }
+  aiPendingPlan = res;
+  render();
+}
+
+function closeAiPlanPreview() {
+  aiPendingPlan = null;
+  render();
+}
+
+async function copyAiPlanJson() {
+  if (!aiPendingPlan) return;
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(aiPendingPlan, null, 2));
+    showToast('Plan JSON copied to clipboard', 'ok');
+  } catch (e) {
+    showToast('Copy failed', 'warn');
+  }
+}
+ 
+// Execute the current aiPendingPlan (if present) using the local adapter and show live progress.
+async function executeAiPendingPlan() {
+  if (!aiPendingPlan) return showToast('No plan to execute', 'warn');
+  if (!window.AiAdapter || typeof window.AiAdapter.executeGraph !== 'function') return showToast('Local executor unavailable', 'warn');
+  showToast('Starting execution…', 'ok');
+  const graph = aiPendingPlan.graph;
+  // Require approval for nodes that may mutate files or run terminal commands.
+  const risky = (graph.nodes||[]).filter(n => (Array.isArray(n.packet.filePaths) && n.packet.filePaths.length>0) || n.packet.node_type==='terminal' || (n.packet.context && n.packet.context.targetFile));
+  const unapproved = risky.map(n=>n.id).filter(id=>!aiApprovedNodes[id]);
+  if (unapproved.length>0 && aiSettings.executeRequiresConfirmation) {
+    showToast('Execution blocked: approve file/terminal nodes first', 'warn');
+    console.warn('Unapproved nodes:', unapproved);
+    return;
+  }
+  const logAreaId = 'ai-exec-log-area';
+  // Attach a simple log modal to show streaming events
+  aiExecStreaming = true;
+  render();
+  window.AiAdapter.executeGraph(graph, 'sequential', (evt) => {
+    if (!evt) return;
+    if (evt.type === 'start') {
+      console.log('exec start', evt);
+    } else if (evt.type === 'node') {
+      // attach to task_history area or console
+      console.log('node update', evt.nodeId, evt.status, evt.result);
+      // show in a simple toast per node status change
+      showToast(`Node ${evt.nodeId}: ${evt.status}`, 'ok');
+    } else if (evt.type === 'heartbeat') {
+      // no-op
+    } else if (evt.type === 'done') {
+      showToast('Execution complete', 'ok');
+      aiExecStreaming = false;
+      render();
+    } else if (evt.type === 'error') {
+      showToast('Execution error: ' + String(evt.error), 'warn');
+      aiExecStreaming = false;
+      render();
+    }
+  }).catch((e) => {
+    showToast('Execution failed to start', 'warn');
+    aiExecStreaming = false;
+    render();
+  });
+}
+
+// Preview a node's diff by requesting the daemon run the graph in a temp workspace
+async function previewNodeDiff(nodeId) {
+  if (!aiPendingPlan || !aiPendingPlan.graph) return showToast('No plan to preview', 'warn');
+  if (!window.AiAdapter || typeof window.AiAdapter.previewNode !== 'function') return showToast('Local adapter unavailable', 'warn');
+  const graph = aiPendingPlan.graph;
+  showToast('Generating preview diff…', 'ok');
+  try {
+    // Request a non-mock preview to produce high-fidelity diffs using real executors.
+    const res = await window.AiAdapter.previewNode(graph, nodeId, { mockExecutors: false });
+    aiPreviewDiff = { nodeId, diff: res.diff || '', logs: res.logs || [] };
+    render();
+  } catch (e) {
+    showToast('Preview failed', 'warn');
+  }
+}
+
+function approveNode(nodeId) {
+  aiApprovedNodes[nodeId] = true;
+  // Persist approval
+  try {
+    if (typeof saveAiApprovedNodesToStorage === 'function') saveAiApprovedNodesToStorage();
+    else if (typeof window !== 'undefined' && typeof window.saveAiApprovedNodesToStorage === 'function') window.saveAiApprovedNodesToStorage();
+  } catch (e) {
+    console.warn('Failed to persist approved node', e);
+  }
+  showToast('Node approved', 'ok');
+  render();
+}
+
+// Approve the node and request the daemon to apply it against the real workdir.
+async function approveAndApplyNode(nodeId) {
+  approveNode(nodeId);
+  if (!window.AiAdapter || typeof window.AiAdapter.executeNode !== 'function') return showToast('Local adapter cannot apply node', 'warn');
+  if (!aiPendingPlan || !aiPendingPlan.graph) return showToast('No plan available', 'warn');
+  showToast('Applying node to project (this may take a moment)…', 'ok');
+  try {
+    const res = await window.AiAdapter.executeNode(aiPendingPlan.graph, nodeId);
+    aiPreviewDiff = { nodeId, diff: res.diff || '', logs: res.logs || [] };
+    showToast('Node applied', 'ok');
+    render();
+  } catch (e) {
+    showToast('Apply failed', 'warn');
+    console.error('apply error', e);
+  }
+}
+
+// Undo (rollback) a node's checkpoint
+async function undoNode(nodeId) {
+  if (!confirm('Undo changes for this node? This will revert the node\'s checkpoint. Continue?')) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.rollbackNode !== 'function') return showToast('Local adapter cannot roll back node', 'warn');
+  showToast('Requesting rollback…', 'ok');
+  try {
+    const res = await window.AiAdapter.rollbackNode(nodeId);
+    if (res && res.ok) {
+      showToast('Rollback applied', 'ok');
+      render();
+    } else {
+      showToast('Rollback failed: ' + (res && res.error ? res.error : 'unknown'), 'warn');
+    }
+  } catch (e) {
+    showToast('Rollback failed', 'warn');
+    console.error('rollback error', e);
+  }
+}
+
 async function dumpAiInterpret(journalId) {
   const entry = journalEntries.find(e => e.id === journalId);
   if (!entry) return;
@@ -730,9 +891,440 @@ function settingsSaveOllamaModel(model) {
   render();
 }
 
+function settingsSaveLocalAiToken(token) {
+  const t = String(token || '').trim();
+  if (t) localStorage.setItem('adhd4_local_ai_token', t);
+  else localStorage.removeItem('adhd4_local_ai_token');
+  showToast(t ? 'Local AI token saved' : 'Local AI token removed', 'ok');
+  render();
+}
+
+function settingsSaveLocalAiUrl(url) {
+  const v = String(url || '').trim();
+  if (typeof localStorage !== 'undefined') {
+    if (v) localStorage.setItem('adhd4_local_ai_url', v);
+    else localStorage.removeItem('adhd4_local_ai_url');
+  }
+  showToast(v ? 'Local AI URL saved' : 'Local AI URL removed', 'ok');
+  render();
+}
+
+async function settingsTestLocalAi() {
+  const url = (typeof localStorage !== 'undefined' && localStorage.getItem('adhd4_local_ai_url')) || window.__AI_FORGE_LOCAL_URL__ || 'http://127.0.0.1:3000';
+  const token = (typeof localStorage !== 'undefined' && localStorage.getItem('adhd4_local_ai_token')) || window.__AI_FORGE_LOCAL_TOKEN__ || '';
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/api/v1/health`, {
+      method: 'GET',
+      headers: token ? { 'x-local-token': token } : {},
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      showToast('Local AI daemon reachable', 'ok');
+    } else {
+      showToast('Local AI daemon responded with error', 'warn');
+    }
+  } catch (e) {
+    showToast('Local AI daemon unreachable', 'warn');
+  }
+  render();
+}
+
 function settingsToggleShowKey() {
   aiShowKey = !aiShowKey;
   render();
+}
+
+// --- Chat / Conversations UI helpers ---
+async function openChatModal() {
+  showChatModal = true;
+  chatLoading = true;
+  render();
+  try {
+    await loadConversations();
+    // auto-open first conversation if present
+    if (Array.isArray(chatConversations) && chatConversations.length && !activeConversationId) {
+      await openConversation(chatConversations[0].id);
+    }
+  } finally {
+    chatLoading = false;
+    render();
+  }
+}
+
+// --- File Manager UI helpers ---
+async function openFileManager(){
+  showFileManager = true;
+  fileManagerLoading = true;
+  render();
+  try {
+    await loadFileManagerFiles();
+  } finally {
+    fileManagerLoading = false;
+    render();
+  }
+}
+
+async function loadFileManagerFiles(){
+  if (!window.AiAdapter || typeof window.AiAdapter.listAllAttachments !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    const res = await window.AiAdapter.listAllAttachments();
+    const files = res?.attachments || [];
+    fileManagerFiles = files;
+    // preload image previews into chatAttachmentMeta cache
+    await Promise.all(files.map(async (f) => {
+      if (!f || !f.id) return;
+      const id = Number(f.id);
+      if (chatAttachmentMeta && chatAttachmentMeta[id]) return;
+      chatAttachmentMeta[id] = { ...f };
+      const ct = (f.content_type || f.contentType || '').toString();
+      if (ct.startsWith && ct.startsWith('image/')) {
+        try {
+          const blob = await window.AiAdapter.downloadAttachment(id).catch(()=>null);
+          if (blob) chatAttachmentMeta[id].previewUrl = URL.createObjectURL(blob);
+        } catch (e) {}
+      }
+    }));
+    render();
+  } catch (e) {
+    console.error('loadFileManagerFiles error', e);
+    showToast('Failed to load files', 'warn');
+    fileManagerFiles = fileManagerFiles || [];
+  }
+}
+
+async function addTagToAttachment(id, tag){
+  if (!tag || !id) return;
+  try {
+    const res = await window.AiAdapter.addAttachmentTag(id, tag);
+    // update local caches
+    const tags = res?.tags || [];
+    fileManagerFiles = (fileManagerFiles || []).map(f => f.id===id?{...f,tags}:f);
+    if (!chatAttachmentMeta) chatAttachmentMeta = {};
+    if (!chatAttachmentMeta[id]) chatAttachmentMeta[id] = { id };
+    chatAttachmentMeta[id].tags = tags;
+    render();
+  } catch (e) {
+    console.error('addTagToAttachment error', e);
+    showToast('Failed to add tag', 'warn');
+  }
+}
+
+async function removeTagFromAttachment(id, tag){
+  if (!tag || !id) return;
+  try {
+    const res = await window.AiAdapter.removeAttachmentTag(id, tag);
+    const tags = res?.tags || [];
+    fileManagerFiles = (fileManagerFiles || []).map(f => f.id===id?{...f,tags}:f);
+    if (chatAttachmentMeta && chatAttachmentMeta[id]) chatAttachmentMeta[id].tags = tags;
+    render();
+  } catch (e) {
+    console.error('removeTagFromAttachment error', e);
+    showToast('Failed to remove tag', 'warn');
+  }
+}
+
+async function renameAttachment(id, filename){
+  if (!id || !filename) return;
+  try {
+    const res = await window.AiAdapter.renameAttachment(id, filename);
+    const att = res?.attachment || null;
+    if (att) {
+      fileManagerFiles = (fileManagerFiles || []).map(f => f.id===id?att:f);
+      if (!chatAttachmentMeta) chatAttachmentMeta = {};
+      chatAttachmentMeta[id] = { ...(chatAttachmentMeta[id] || {}), ...(att || {}) };
+      showToast('Renamed', 'ok');
+      render();
+    }
+  } catch (e) {
+    console.error('renameAttachment error', e);
+    showToast('Rename failed', 'warn');
+  }
+}
+
+function selectFileManagerAttachment(id){
+  fileManagerSelected = id;
+  render();
+}
+
+// Delete an attachment (UI wrapper)
+async function deleteAttachment(id){
+  if (!id) return;
+  if (!confirm('Delete this file? This action cannot be undone.')) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.deleteAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    await window.AiAdapter.deleteAttachment(id);
+    // remove from local caches
+    fileManagerFiles = (fileManagerFiles || []).filter(f => f.id !== id);
+    if (chatAttachmentMeta && chatAttachmentMeta[id] && chatAttachmentMeta[id].previewUrl) {
+      try { URL.revokeObjectURL(chatAttachmentMeta[id].previewUrl); } catch (e) {}
+      delete chatAttachmentMeta[id];
+    }
+    if (fileManagerSelected === id) fileManagerSelected = null;
+    showToast('File deleted', 'ok');
+    render();
+  } catch (e) {
+    console.error('deleteAttachment error', e);
+    showToast('Delete failed', 'warn');
+  }
+}
+
+// Move (physically rename) attachment
+async function moveAttachment(id){
+  if (!id) return;
+  const dest = prompt('New filename (no path):', (fileManagerFiles.find(f=>f.id===id)||{}).filename || '');
+  if (!dest) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.moveAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    const res = await window.AiAdapter.moveAttachment(id, dest);
+    const att = res?.attachment || null;
+    if (att) {
+      fileManagerFiles = (fileManagerFiles || []).map(f => f.id===id?att:f);
+      if (!chatAttachmentMeta) chatAttachmentMeta = {};
+      chatAttachmentMeta[id] = { ...(chatAttachmentMeta[id] || {}), ...(att || {}) };
+      showToast('Moved', 'ok');
+      render();
+    }
+  } catch (e) {
+    console.error('moveAttachment error', e);
+    showToast('Move failed', 'warn');
+  }
+}
+
+// Compare selected file with another (prompt for other id)
+async function compareSelectedWithPrompt(){
+  if (!fileManagerSelected) return showToast('Select a file first', 'warn');
+  const other = prompt('Enter other attachment id to compare with:');
+  if (!other) return;
+  const idA = Number(fileManagerSelected);
+  const idB = Number(other);
+  if (!window.AiAdapter || typeof window.AiAdapter.compareAttachments !== 'function') return showToast('Local adapter unavailable', 'warn');
+  showToast('Computing diff…', 'ok');
+  try {
+    const res = await window.AiAdapter.compareAttachments(idA, idB);
+    aiPreviewDiff = { nodeId: `cmp-${idA}-${idB}`, diff: res?.diff || '', kind: 'compare' };
+    render();
+  } catch (e) {
+    console.error('compare error', e);
+    showToast('Compare failed', 'warn');
+  }
+}
+
+// Preview repair for an attachment (shows diff). Use applyRepair() to apply.
+async function previewRepairAttachment(id){
+  if (!id) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.repairAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  showToast('Generating repair preview…', 'ok');
+  try {
+    const res = await window.AiAdapter.repairAttachment(id, { apply: false });
+    aiPreviewDiff = { nodeId: `repair-${id}`, diff: res?.diff || '', kind: 'repair' };
+    fileRepairPending = { id };
+    render();
+  } catch (e) {
+    console.error('previewRepairAttachment error', e);
+    showToast('Repair preview failed', 'warn');
+  }
+}
+
+async function applyFileRepair(){
+  if (!fileRepairPending || !fileRepairPending.id) return showToast('No pending repair', 'warn');
+  const id = fileRepairPending.id;
+  if (!confirm('Apply repair to file?')) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.repairAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  showToast('Applying repair…', 'ok');
+  try {
+    const res = await window.AiAdapter.repairAttachment(id, { apply: true });
+    aiPreviewDiff = { nodeId: `repair-${id}`, diff: res?.diff || '', kind: 'repair' };
+    // Refresh files list and metadata
+    await loadFileManagerFiles();
+    fileRepairPending = null;
+    showToast('Repair applied', 'ok');
+    render();
+  } catch (e) {
+    console.error('applyFileRepair error', e);
+    showToast('Apply failed', 'warn');
+  }
+}
+
+async function loadConversations() {
+  if (!window.AiAdapter || typeof window.AiAdapter.listConversations !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    const res = await window.AiAdapter.listConversations();
+    chatConversations = res?.conversations || [];
+    render();
+  } catch (e) {
+    console.error('loadConversations error', e);
+    showToast('Could not load conversations', 'warn');
+  }
+}
+
+async function openConversation(convId) {
+  activeConversationId = convId;
+  chatLoading = true;
+  render();
+  try {
+    await loadConversationMessages(convId);
+  } finally {
+    chatLoading = false;
+    render();
+  }
+}
+
+async function loadConversationMessages(convId) {
+  if (!window.AiAdapter || typeof window.AiAdapter.getConversationMessages !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    const res = await window.AiAdapter.getConversationMessages(convId);
+    const messages = res?.messages || [];
+    chatMessages[convId] = messages;
+    render();
+
+    // Collect unique attachment ids from messages and composer
+    const attIdsSet = new Set();
+    for (const m of messages) {
+      try {
+        const arr = m.attachments ? JSON.parse(m.attachments) : [];
+        if (Array.isArray(arr)) arr.forEach(id => attIdsSet.add(Number(id)));
+      } catch (e) {}
+    }
+    (chatComposerAttachments || []).forEach(id => attIdsSet.add(Number(id)));
+
+    // Fetch metadata and image previews for any unknown attachments
+    const toFetch = [];
+    for (const id of attIdsSet) if (!chatAttachmentMeta || !chatAttachmentMeta[id]) toFetch.push(id);
+    if (toFetch.length) {
+      await Promise.all(toFetch.map(async (id) => {
+        try {
+          const metaRes = await window.AiAdapter.getAttachmentMeta(id).catch(()=>null);
+          if (metaRes && metaRes.attachment) {
+            chatAttachmentMeta[id] = metaRes.attachment;
+            const ct = (chatAttachmentMeta[id].content_type || chatAttachmentMeta[id].contentType || '').toString();
+            if (ct.startsWith && ct.startsWith('image/')) {
+              try {
+                const blob = await window.AiAdapter.downloadAttachment(id).catch(()=>null);
+                if (blob) chatAttachmentMeta[id].previewUrl = URL.createObjectURL(blob);
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }));
+      render();
+    }
+  } catch (e) {
+    console.error('loadConversationMessages error', e);
+    showToast('Failed to load messages', 'warn');
+    chatMessages[convId] = chatMessages[convId] || [];
+  }
+}
+
+async function sendChatPrompt() {
+  const text = (chatComposerText || '').trim();
+  if (!text) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.executeGraph !== 'function') return showToast('Local adapter unavailable', 'warn');
+  chatComposerText = '';
+  render();
+  try {
+    // Ensure conversation exists
+    if (!activeConversationId) {
+      const created = await window.AiAdapter.createConversation({ title: String(text).slice(0, 80) });
+      activeConversationId = created?.id || null;
+      await loadConversations();
+    }
+
+    // Post the user message to the conversation store (include attachments)
+    try {
+      await window.AiAdapter.postConversationMessage(activeConversationId, { role: 'user', prompt: text, attachments: chatComposerAttachments });
+    } catch (e) {
+      console.warn('Failed to post user message to conversation', e);
+    }
+
+    // Clear composer attachments after posting
+    chatComposerAttachments = [];
+
+    showToast('Sending to AI…', 'ok');
+
+    // Build a single-node TaskGraph that includes the conversationId in context
+    const graph = { id: 'chat-' + Date.now(), projectId: 'dashboard', nodes: [ { id: 'msg1', packet: { intent: text, context: { conversationId: activeConversationId }, constraints: [], dependencies: [], node_type: 'ui', filePaths: [] } } ] };
+
+    // Run the graph via the adapter; when done, reload messages
+    await window.AiAdapter.executeGraph(graph, 'sequential', (evt) => {
+      if (!evt) return;
+      if (evt.type === 'done') {
+        loadConversationMessages(activeConversationId);
+        showToast('AI responded', 'ok');
+      } else if (evt.type === 'error') {
+        showToast('AI error: ' + String(evt.error), 'warn');
+      }
+    });
+  } catch (e) {
+    console.error('sendChatPrompt error', e);
+    showToast('Failed to send prompt', 'warn');
+  }
+}
+
+// --- Attachment helpers for chat composer ---
+function handleChatFileInput(files){
+  if (!files || !files.length) return;
+  uploadComposerAttachment(files[0]);
+  // clear the input (caller passes this.files so clearing isn't necessary)
+}
+
+async function uploadComposerAttachment(file){
+  if (!file) return;
+  if (!window.AiAdapter || typeof window.AiAdapter.uploadAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  showToast('Uploading attachment…', 'ok');
+  try {
+    if (!activeConversationId) {
+      const created = await window.AiAdapter.createConversation({ title: `attachments-${Date.now()}` });
+      activeConversationId = created?.id || null;
+      await loadConversations();
+    }
+    const res = await window.AiAdapter.uploadAttachment(file, activeConversationId);
+    if (res && res.id) {
+      const id = Number(res.id);
+      chatComposerAttachments.push(id);
+      // cache metadata for faster UI rendering
+      chatAttachmentMeta[id] = {
+        id,
+        filename: res.filename || file.name,
+        content_type: res.contentType || res.content_type || file.type || null,
+        size: res.size || null,
+        created_at: Date.now(),
+      };
+      // if it's an image, fetch a small preview blob
+      try {
+        const ct = (chatAttachmentMeta[id].content_type || '').toString();
+        if (ct.startsWith && ct.startsWith('image/')) {
+          const blob = await window.AiAdapter.downloadAttachment(id).catch(()=>null);
+          if (blob) chatAttachmentMeta[id].previewUrl = URL.createObjectURL(blob);
+        }
+      } catch (e) {}
+      showToast('Attachment uploaded', 'ok');
+      render();
+    }
+  } catch (e) {
+    console.error('uploadComposerAttachment error', e);
+    showToast('Upload failed', 'warn');
+  }
+}
+
+function removeComposerAttachment(id){
+  chatComposerAttachments = (chatComposerAttachments || []).filter(x => x !== id);
+  render();
+}
+
+async function downloadAttachment(attachmentId){
+  if (!window.AiAdapter || typeof window.AiAdapter.downloadAttachment !== 'function') return showToast('Local adapter unavailable', 'warn');
+  try {
+    const blob = await window.AiAdapter.downloadAttachment(attachmentId);
+    const metaRes = await window.AiAdapter.getAttachmentMeta(attachmentId).catch(()=>null);
+    const filename = metaRes?.attachment?.filename || `attachment-${attachmentId}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('downloadAttachment error', e);
+    showToast('Download failed', 'warn');
+  }
 }
 
 // ── Dump widget integration ───────────────────────────────────────────────────

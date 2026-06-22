@@ -414,6 +414,23 @@ function renderSettingsModalHtml(){
           onchange="settingsSaveOllamaUrl(this.value)"
           style="${inputStyle('flex:1;min-width:160px;font-size:11px;')}"/>
       </div>
+      <div style="padding:10px;background:${T.surface2};border-radius:10px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:${T.text};margin-bottom:8px;">Local AI Daemon</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:${T.muted};width:42px;">URL:</span>
+          <input type="text" value="${typeof localStorage !== 'undefined' ? esc(localStorage.getItem('adhd4_local_ai_url')||'http://127.0.0.1:3000') : 'http://127.0.0.1:3000'}"
+            onchange="settingsSaveLocalAiUrl(this.value)"
+            style="${inputStyle('flex:1;min-width:160px;font-size:11px;')}"/>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:${T.muted};width:42px;">Token:</span>
+          <input type="password" value="${typeof localStorage !== 'undefined' && localStorage.getItem('adhd4_local_ai_token') ? '••••••••' : ''}"
+            onchange="settingsSaveLocalAiToken(this.value)"
+            style="${inputStyle('flex:1;min-width:160px;font-size:11px;')}"/>
+          <button onclick="settingsTestLocalAi()" style="${btnStyle('default','font-size:11px;padding:4px 8px;')}">Test</button>
+        </div>
+        <div style="font-size:10px;color:${T.muted2};margin-top:6px;">Saved locally in localStorage.</div>
+      </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
         <span style="font-size:11px;color:${T.muted};width:42px;">Model:</span>
         <input type="text" value="${esc(aiSettings.ollamaModel||OLLAMA_DEFAULT_MODEL)}"
@@ -572,3 +589,214 @@ function renderAiDailyPlanHtml(){
     </div>
   </div>`;
 }
+
+function renderAiExecLogHtml(){
+  if(!aiExecStreaming) return '';
+  return `
+  <div onclick="if(event.target===this){}" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1200;display:flex;align-items:flex-end;justify-content:center;padding:20px;pointer-events:none;">
+    <div style="pointer-events:auto;background:${T.surface};border:1.5px solid ${T.border2};border-radius:12px;padding:12px;width:100%;max-width:520px;box-sizing:border-box;box-shadow:0 -8px 40px rgba(0,0,0,.28);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:800;color:${T.text};">Execution running</div>
+        <div style="font-size:11px;color:${T.muted2};">Streaming updates…</div>
+      </div>
+      <div id="ai-exec-log-area" style="max-height:200px;overflow:auto;border-top:1px solid ${T.border};padding-top:8px;color:${T.muted};font-family:DM Mono,monospace;font-size:12px;">Live events will appear in the console.</div>
+    </div>
+  </div>`;
+}
+
+function renderAiPlanPreviewHtml(){
+  const pending = aiPendingPlan || {};
+  const nodes = Array.isArray(pending.graph?.nodes) ? pending.graph.nodes : [];
+  const nodesHtml = nodes.length ? nodes.map((n) => {
+    const risky = (Array.isArray(n.packet.filePaths) && n.packet.filePaths.length>0) || n.packet.node_type==='terminal' || (n.packet.context && n.packet.context.targetFile);
+    const approved = (typeof aiApprovedNodes !== 'undefined' && aiApprovedNodes && aiApprovedNodes[n.id]);
+    return `
+      <div style="padding:8px;border-bottom:1px solid ${T.border};">
+        <div style="font-size:12px;font-weight:700;color:${T.text};">${esc(n.id || '[node]')}</div>
+        <pre style="font-family:DM Mono,monospace;font-size:11px;color:${T.muted2};white-space:pre-wrap;margin-top:6px;">${esc(JSON.stringify(n.packet || {}, null, 2))}</pre>
+        ${risky?`<div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <button onclick="previewNodeDiff('${esc(n.id)}')" style="${btnStyle('default','font-size:11px;padding:5px 8px;')}">Preview diff</button>
+          <button onclick="approveNode('${esc(n.id)}')" style="${approved?btnStyle('accent','font-size:11px;padding:5px 8px;'):btnStyle('default','font-size:11px;padding:5px 8px;')}">${approved?'Approved':'Approve'}</button>
+          <span style="font-size:11px;color:${approved?T.accent:T.muted2};">${approved?'Approved':'Requires approval'}</span>
+        </div>`:''}
+      </div>
+    `;
+  }).join('') : `<div style="color:${T.muted2};padding:12px;font-size:12px;">No nodes returned.</div>`;
+
+  return `
+  <div onclick="if(event.target===this)closeAiPlanPreview()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div onclick="event.stopPropagation()" style="background:${T.surface};border:1.5px solid ${T.border2};border-radius:14px;padding:16px;width:100%;max-width:720px;box-sizing:border-box;max-height:90vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:${T.text};">AI Plan Preview</div>
+          <div style="font-size:12px;color:${T.muted2};">Review the generated task-graph nodes below.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="copyAiPlanJson()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Copy JSON</button>
+          <button onclick="executeAiPendingPlan()" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Execute</button>
+          <button onclick="closeAiPlanPreview()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;border:1.5px solid ${T.border};border-radius:12px;overflow:hidden;">${nodesHtml}</div>
+    </div>
+  </div>`;
+}
+
+function renderAiDiffModalHtml(){
+  if(!aiPreviewDiff) return '';
+  const nodeId = aiPreviewDiff.nodeId;
+  const diff = String(aiPreviewDiff.diff || '').trim() || 'No diff available.';
+  return `
+  <div onclick="if(event.target===this)aiPreviewDiff=null;render()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div onclick="event.stopPropagation()" style="background:${T.surface};border:1.5px solid ${T.border2};border-radius:12px;padding:14px;width:100%;max-width:820px;box-sizing:border-box;max-height:84vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:800;color:${T.text};">Preview Diff — ${esc(nodeId)}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+              ${aiPreviewDiff && aiPreviewDiff.kind==='repair' ? `
+                <button onclick="fileRepairPending && (aiPreviewDiff=null,render())" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+                <button onclick="applyFileRepair();" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Apply Repair</button>
+              ` : aiPreviewDiff && aiPreviewDiff.kind==='compare' ? `
+                <button onclick="aiPreviewDiff=null;render()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+              ` : `
+                <button onclick="approveNode('${esc(nodeId)}')" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Approve</button>
+                <button onclick="approveAndApplyNode('${esc(nodeId)}')" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Approve & Apply</button>
+                <button onclick="undoNode('${esc(nodeId)}')" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Undo</button>
+                <button onclick="aiPreviewDiff=null;render()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+              `}
+        </div>
+      </div>
+      <pre style="font-family:DM Mono,monospace;font-size:12px;color:${T.muted2};white-space:pre-wrap;border-top:1px solid ${T.border};padding-top:8px;">${esc(diff)}</pre>
+    </div>
+  </div>`;
+}
+
+function renderChatModalHtml(){
+  if(!showChatModal) return '';
+  const convs = Array.isArray(chatConversations) ? chatConversations : [];
+  const convsHtml = convs.map(c => `<div style="padding:8px;border-bottom:1px solid ${T.border};cursor:pointer;${c.id===activeConversationId?('background:'+T.surface2+';'):''}" onclick="openConversation(${c.id});render()"><div style="font-weight:700;color:${T.text};">${esc(c.title||('Conversation '+c.id))}</div><div style="font-size:11px;color:${T.muted};">${esc(c.created_at||'')}</div></div>`).join('') || `<div style="color:${T.muted2};padding:12px;">No conversations yet.</div>`;
+  const msgs = activeConversationId ? (chatMessages[activeConversationId] || []) : [];
+  const msgsHtml = msgs.map(m => {
+    const role = esc(m.role||'');
+    const body = esc(m.response || m.prompt || '');
+    // attachments field may be JSON string of ids
+    let attIds = [];
+    try { attIds = JSON.parse(m.attachments || '[]'); } catch (e) { attIds = []; }
+    let attHtml = '';
+    if (Array.isArray(attIds) && attIds.length) {
+      attHtml = '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">' + attIds.map(aId => {
+        const meta = (typeof chatAttachmentMeta !== 'undefined' && chatAttachmentMeta[aId]) ? chatAttachmentMeta[aId] : null;
+        const label = meta && (meta.filename || meta.fileName) ? esc(meta.filename || meta.fileName) : ('Attachment ' + aId);
+        const preview = meta && meta.previewUrl ? meta.previewUrl : null;
+        if (preview) {
+          return `<div style="display:flex;flex-direction:column;align-items:flex-start;"><img src="${preview}" style="max-width:160px;max-height:120px;border-radius:8px;border:1px solid ${T.border};display:block;"/><div style="margin-top:6px;"><button onclick="downloadAttachment(${aId})" style="${btnStyle('default','font-size:12px;padding:6px 8px;')}">${label}</button></div></div>`;
+        }
+        return `<button onclick="downloadAttachment(${aId})" style="${btnStyle('default','font-size:12px;padding:6px 8px;')}">${label}</button>`;
+      }).join('') + '</div>';
+    }
+    if(role==='assistant'){
+      const prov = esc((m.provider||'') + (m.model?(' / '+m.model):''));
+      return `<div style="margin-bottom:10px;"><div style="font-size:12px;color:${T.muted};font-weight:700;">Assistant <span style='font-size:11px;color:${T.muted2};font-weight:400;margin-left:8px;'>${prov}</span></div><div style="background:${T.surface3};padding:10px;border-radius:8px;margin-top:6px;font-family:DM Mono,monospace;font-size:13px;color:${T.text};white-space:pre-wrap;">${body}</div>${attHtml}</div>`;
+    }
+    return `<div style="margin-bottom:10px;"><div style="font-size:12px;color:${T.muted};font-weight:700;">User</div><div style="padding:8px;border-radius:6px;margin-top:6px;background:${T.surface};font-size:13px;color:${T.text};">${body}</div>${attHtml}</div>`;
+  }).join('') || `<div style="color:${T.muted2};padding:12px;">No messages yet.</div>`;
+
+  return `
+  <div onclick="if(event.target===this){showChatModal=false;render()}" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1250;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div onclick="event.stopPropagation()" style="background:${T.surface};border:1.5px solid ${T.border2};border-radius:12px;padding:12px;width:100%;max-width:960px;box-sizing:border-box;max-height:86vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:800;color:${T.text};">Chat</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="showChatModal=false;render()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div style="width:260px;max-height:60vh;overflow:auto;border-right:1px solid ${T.border};padding-right:8px;">${convsHtml}</div>
+        <div style="flex:1;display:flex;flex-direction:column;max-height:60vh;">
+          <div id="chat-messages" style="flex:1;overflow:auto;padding:8px;">${msgsHtml}</div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="chat-composer" data-no-clobber="true" placeholder="Write a message..." value="${esc(chatComposerText||'')}" oninput="chatComposerText=this.value" style="${inputStyle('flex:1;min-width:0;font-size:13px;')};" />
+              <button onclick="sendChatPrompt();render();" style="${btnStyle('accent','font-size:13px;padding:8px 12px;')}">Send</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="file" id="chat-file-input" onchange="handleChatFileInput(this.files)" />
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${(chatComposerAttachments||[]).map(id=>{const m=(typeof chatAttachmentMeta!=='undefined'&&chatAttachmentMeta[id])?chatAttachmentMeta[id]:null;const lbl=m && (m.filename||m.fileName)?esc(m.filename||m.fileName):('#'+id);return `<span style="background:${T.surface2};padding:6px;border-radius:6px;font-size:12px;color:${T.text};">${lbl} <button onclick="removeComposerAttachment(${id});render()" style="${btnStyle('danger','font-size:10px;padding:2px 6px;margin-left:6px;')}">x</button></span>`;}).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+  function renderFileManagerModalHtml(){
+    if(!showFileManager) return '';
+    const files = Array.isArray(fileManagerFiles) ? fileManagerFiles : [];
+    const q = (fileManagerFilter||'').trim().toLowerCase();
+    const list = files.filter(f => !q || (f.filename||'').toLowerCase().includes(q) || (f.tags||[]).some(t => (t||'').toLowerCase().includes(q)));
+    const listHtml = list.length ? list.map(f => {
+      const id = f.id;
+      const meta = (typeof chatAttachmentMeta!=='undefined' && chatAttachmentMeta[id]) ? chatAttachmentMeta[id] : f;
+      const preview = meta && meta.previewUrl ? meta.previewUrl : null;
+      return `<div onclick="selectFileManagerAttachment(${id});render()" style="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid ${T.border};cursor:pointer;${fileManagerSelected===id?('background:'+T.surface2+';'):''}">
+        <div style="width:56px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          ${preview?`<img src="${preview}" style="max-width:56px;max-height:44px;border-radius:6px;border:1px solid ${T.border};"/>`:`<div style="width:56px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px dashed ${T.border};color:${T.muted};font-size:12px;">${esc((f.content_type||'').split('/')[1]||'file')}</div>`}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;color:${T.text};font-size:13px;">${esc(f.filename||('attachment-'+id))}</div>
+          <div style="font-size:11px;color:${T.muted};margin-top:4px;">${esc(f.content_type||'')} • ${f.size?fmtBytes(f.size):''}</div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">${(f.tags||[]).map(tag=>`<span style="background:${T.surface2};padding:4px 8px;border-radius:999px;font-size:12px;color:${T.text};">${esc(tag)}</span>`).join('')}</div>
+        </div>
+      </div>`;
+    }).join('') : `<div style="color:${T.muted2};padding:12px;">No files.</div>`;
+
+    const sel = fileManagerSelected ? (fileManagerFiles||[]).find(x=>x.id===fileManagerSelected) : null;
+    const selMeta = sel && chatAttachmentMeta && chatAttachmentMeta[sel.id] ? chatAttachmentMeta[sel.id] : sel;
+
+    return `
+    <div onclick="if(event.target===this){showFileManager=false;render()}" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1300;display:flex;align-items:center;justify-content:center;padding:12px;">
+      <div onclick="event.stopPropagation()" style="background:${T.surface};border:1.5px solid ${T.border2};border-radius:12px;padding:12px;width:100%;max-width:980px;box-sizing:border-box;max-height:86vh;overflow:auto;display:flex;gap:12px;">
+        <div style="width:340px;border-right:1px solid ${T.border};padding-right:8px;max-height:74vh;overflow:auto;">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <input placeholder="Filter files or tags…" value="${esc(fileManagerFilter||'')}" oninput="fileManagerFilter=this.value;render();" style="${inputStyle('flex:1;')}" />
+            <button onclick="loadFileManagerFiles();render();" style="${btnStyle('default','font-size:12px;padding:6px 8px;')}">Refresh</button>
+          </div>
+          <div style="max-height:60vh;overflow:auto;border-top:1px solid ${T.border};">${listHtml}</div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:15px;font-weight:800;color:${T.text};">Files</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button onclick="showFileManager=false;render()" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Close</button>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:8px;border:1px solid ${T.border};border-radius:8px;background:${T.surface3};">
+            ${sel?`<div style="display:flex;gap:12px;align-items:flex-start;">
+              <div style="width:180px;height:140px;flex-shrink:0;">${selMeta && selMeta.previewUrl?`<img src="${selMeta.previewUrl}" style="max-width:180px;max-height:140px;border-radius:8px;border:1px solid ${T.border};"/>`:`<div style="width:180px;height:140px;display:flex;align-items:center;justify-content:center;border:1px dashed ${T.border};color:${T.muted};">No preview</div>`}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;color:${T.text};font-size:16px;">${esc(sel.filename||('attachment-'+sel.id))}</div>
+                <div style="font-size:12px;color:${T.muted};margin-top:6px;">${esc(sel.content_type||'')}${sel.size?(' • '+fmtBytes(sel.size)):''}</div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <a href="#" onclick="downloadAttachment(${sel.id});return false;" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Download</a>
+                  <button onclick="(async()=>{const fn=prompt('Rename metadata filename to:','${esc(sel.filename||'')}'); if(fn){ await renameAttachment(${sel.id},fn); await loadFileManagerFiles(); }})();render();" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Rename</button>
+                  <button onclick="(async()=>{ await moveAttachment(${sel.id}); await loadFileManagerFiles(); })();render();" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Move</button>
+                  <button onclick="(async()=>{ if(confirm('Delete this file?')){ await deleteAttachment(${sel.id}); await loadFileManagerFiles(); } })();render();" style="${btnStyle('danger','font-size:12px;padding:6px 10px;')}">Delete</button>
+                  <button onclick="(async()=>{ await compareSelectedWithPrompt(); })();render();" style="${btnStyle('default','font-size:12px;padding:6px 10px;')}">Compare</button>
+                  <button onclick="(async()=>{ await previewRepairAttachment(${sel.id}); })();render();" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Repair</button>
+                </div>
+                <div style="margin-top:12px;">
+                  <div style="font-weight:700;margin-bottom:6px;color:${T.text};">Tags</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">${(sel.tags||[]).map(tag=>`<span style="background:${T.surface2};padding:6px 8px;border-radius:999px;font-size:12px;color:${T.text};">${esc(tag)} <button onclick="removeTagFromAttachment(${sel.id}, ${JSON.stringify(tag)});render();" style="${btnStyle('danger','font-size:10px;padding:2px 6px;margin-left:6px;')}">x</button></span>`).join('')}</div>
+                  <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+                    <input id="fm-tag-input-${sel.id}" placeholder="New tag" style="${inputStyle('flex:1;')}" />
+                    <button onclick="(async()=>{const v=document.getElementById('fm-tag-input-${sel.id}').value; if(v){ await addTagToAttachment(${sel.id}, v); document.getElementById('fm-tag-input-${sel.id}').value=''; await loadFileManagerFiles(); }} )();render();" style="${btnStyle('accent','font-size:12px;padding:6px 10px;')}">Add</button>
+                  </div>
+                </div>
+              </div>
+            </div>`:'<div style="color:'+T.muted2+';">Select a file from the list to view details.</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }

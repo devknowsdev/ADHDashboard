@@ -82,6 +82,13 @@ function _renderPlannerSidebar(){
       ${aiPendingSuggestion?`<span style="position:absolute;top:4px;right:6px;width:6px;height:6px;border-radius:50%;background:${T.accent};"></span>`:''}
     </button>` : '';
 
+  const plannerPlanPreviewBtn = aiSettings.masterEnabled ? `
+    <button onclick="openAiPlanPrompt()" title="Plan preview"
+      style="margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border:none;cursor:pointer;border-radius:8px;width:100%;background:${T.surface};color:${T.muted};">
+      <i class="ti ti-eye" style="font-size:14px;"></i>
+      <span style="font-size:8px;font-weight:700;">Plan preview</span>
+    </button>` : '';
+
   const todayBtn=`
     ${divider}
     <button onclick="plannerSelectDate(todayYMD())" title="Go to today"
@@ -94,7 +101,7 @@ function _renderPlannerSidebar(){
     ${viewBtns}
     ${zoomControls}
     ${layoutControls}
-    ${plannerAiBtn}
+    ${plannerAiBtn}${plannerPlanPreviewBtn}
     ${todayBtn}
   </div>`;
 }
