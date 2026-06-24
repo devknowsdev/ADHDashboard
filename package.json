@@ -1,0 +1,24 @@
+{
+  "name": "adhdashboard-cursor",
+  "version": "1.0.0",
+  "description": "Local-first productivity dashboard designed for ADHD and autism-friendly workflows. No build step, no account, no server required for day-to-day use — your data stays in the browser.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devknowsdev/ADHDashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/devknowsdev/ADHDashboard/issues"
+  },
+  "homepage": "https://github.com/devknowsdev/ADHDashboard#readme",
+  "devDependencies": {
+    "playwright": "^1.37.1"
+  }
+}

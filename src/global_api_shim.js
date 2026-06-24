@@ -145,13 +145,8 @@ globalThis so Node VM harnesses can access them.
   // Expose any extra names discovered in templates/tests that are reasonably safe noop aliases
   ['openFocusPicker','closeFocusPicker','openSessions','closeSessions','saveSessionEdit','cancelSessionEdit','deleteSession'].forEach(n=>{ if(typeof globalThis[n]==='undefined') globalThis[n]=root[n]; });
 
-  // Provide safe no-op implementations for many inline handlers that may
-  // be referenced by templates but are not required for headless tests.
-  const noopNames = [
-    'nudgeMetroBpm','setMetroBpm','stopMetro','startMetro','toggleMetro','tapTempo','setMetroBeats','setMetroSubdivision','toggleTuner','setKbOctave','setKbWaveform','setKbVolume',
-    'playRecording','toggleAudioRecording','dumpAiParse','dumpAiConfirm','dumpAiEdit','settingsTestOllama','settingsTestAnthropic','settingsToggleShowKey',
-    'toggleWidgetCollapse','hideWidget','restoreWidget','plannerNudgeZoom','plannerSetZoom','plannerSetDayLayout','plannerSelectDate','tlPillClick','tlClearTaskTime','tlCommitNewTask','tlCancelNewTask','plannerOpenTimeline','plannerOpenDump','plannerPromoteDump'
-  ];
+  // No-op aliases removed — prefer real implementations where available.
+  const noopNames = [];
   noopNames.forEach(name=>{
     try{ if(typeof root[name]==='undefined') root[name]=function(){ try{ if(typeof render==='function') render(); }catch(e){} }; if(typeof globalThis!== 'undefined' && typeof globalThis[name]==='undefined') globalThis[name]=root[name]; }catch(e){}
   });
@@ -163,6 +158,19 @@ globalThis so Node VM harnesses can access them.
   // UI toggles
   ensure('toggleEnergyFilter', function(){ try{ energyFilterOn = !energyFilterOn; render&&render(); }catch(e){} });
   ensure('toggleTimeTargets', function(){ try{ showTimeTargets = !showTimeTargets; render&&render(); }catch(e){} });
+
+  // Quick capture helper: adds a planner dump for today (or provided date)
+  ensure('quickCapture', function(text, openPlanner){ try{
+    const txt = String(text||'').trim(); if(!txt) return;
+    const ymd = (typeof openPlanner==='string' && openPlanner)?openPlanner:dateToYMD(new Date());
+    if(!plannerDayDumps) plannerDayDumps = {};
+    if(!plannerDayDumps[ymd]) plannerDayDumps[ymd]=[];
+    const item = { id: Date.now(), text: txt, catId:'', done:false, createdAt: Date.now() };
+    plannerDayDumps[ymd].unshift(item);
+    save&&save(); showToast && showToast('Captured','ok');
+    if(openPlanner===true){ plannerOpenDump(ymd); }
+    render&&render();
+  }catch(e){}});
 
   // Task list controls
   ensure('filterTasks', function(f){ try{ taskFilter = f||'all'; render&&render(); }catch(e){} });

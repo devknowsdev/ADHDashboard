@@ -27,8 +27,20 @@ What I changed (high-level)
 
 Notes & next steps
 - Manual browser smoke tests: open the SPA and verify timers, quick-log modal, and session modal UX flows still behave as expected in the real browser.
-
 - Committed changes: recent commits include the shim additions and this handover file.
+
+Smoke check performed (local)
+- Started a simple static server: `python3 -m http.server 8000` and verified `http://localhost:8000/` returned the app HTML (HTTP 200).
+- Verified all referenced script files from `index.html` exist under `src/`.
+
+- Playwright smoke: ran `tools/playwright_smoke.js` against `http://localhost:8000` (headless Chromium) — result: PASS (no console errors, `#root` present).
+ - Playwright smoke: ran `tools/playwright_smoke.js` against `http://localhost:8000` (headless Chromium) — result: PASS (no console errors, `#root` present). Expanded test now creates a planner dump, promotes it to a task, starts a timer, and verifies a session was saved.
+ - UX improvements:
+   - `quickCapture(text, openPlanner?)` added in `src/global_api_shim.js` to quickly add planner dumps for today and optionally open the planner.
+   - `toggleAudioRecording` now falls back to a file-upload flow when `getUserMedia` is unavailable, saving uploaded audio via `saveAudioBlob` and `saveAudioMeta`.
+
+If you want a deeper automated smoke test I can install Playwright and run a headless browser script, but that will add dependencies.
+ - Pull request: https://github.com/devknowsdev/ADHDashboard/pull/1 (branch `shim-fixes` -> `main`).
 - Consider refactoring `global_api_shim.js` to import helper functions where available instead of duplicating logic, once the VM harness is stabilized.
 - If you want, I can also push this branch to remote and open a PR with the changes.
 

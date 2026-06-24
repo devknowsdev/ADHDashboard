@@ -77,7 +77,30 @@ async function toggleAudioRecording(){
     return;
   }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    showToast('Microphone not available','warn');
+    // Fallback: allow uploading an audio file when mic isn't available
+    try{
+      const input=document.createElement('input');
+      input.type='file';
+      input.accept='audio/*';
+      input.onchange=async function(){
+        const file = input.files && input.files[0];
+        if(!file){ showToast('No file selected','warn'); return; }
+        const id = Date.now();
+        const started = Date.now();
+        const meta = { id, label: defaultAudioLabel(started), createdAt: started, durationSecs: 0, mimeType: file.type };
+        try{
+          await saveAudioBlob(id, file);
+          audioRecordings.unshift(meta);
+          saveAudioMeta();
+          journalEntries = journalEntries||[];
+          journalEntries.unshift({id:id+1,type:'voice',text:meta.label,catId:'',createdAt:started,audioId:id});
+          localStorage.setItem('adhd4_journal',JSON.stringify(journalEntries));
+          showToast('Recording uploaded','ok');
+          render();
+        }catch(e){ showToast('Could not save upload','warn'); }
+      };
+      input.click();
+    }catch(e){ showToast('Microphone not available','warn'); }
     return;
   }
   try{
